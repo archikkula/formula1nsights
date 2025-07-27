@@ -1,70 +1,25 @@
-#Python
+# Python 
 __pycache__/
 *.py[cod]
-*.so
-*.egg
-*.egg-info/
-*.manifest
-*.spec
-*.pyo
-*.pyd
-*.log
-*.sqlite3
-*.cover
-*.py.cover
-.pytest_cache/
-.mypy_cache/
-.pytype/
-.dmypy.json
-.coverage
-.coverage.*
-.hypothesis/
-
-#Virtual Environments
 venv/
-.venv/
-env/
-env.bak/
-venv.bak/
-.Python
-
-#Project Files
 .env
-.DS_Store
-.pdm-python
-.pdm-build/
-cursorignore
-.cursorindexingignore
 
-#PyInstaller, Build, and Packaging
+# Node / React 
+node_modules/
 build/
 dist/
-*.egg-info/
-.eggs/
-develop-eggs/
-wheels/
-share/python-wheels/
-pip-log.txt
-pip-delete-this-directory.txt
-
-#Documentation
-docs/_build/
-site/
-
-#Editors
-.vscode/
-.idea/
-.spyderproject
-.spyproject
-.ropeproject
-
-#Project Data Files
-data/
-*.pdf
-*.csv
-*.xlsx
-
-#React Frontend
+frontend/node_modules/
+frontend/build/
 client/node_modules/
 client/build/
-client/.env
+*.env
+
+#  Logs & Databases 
+*.log
+*.sqlite3
+
+#  Editor & OS 
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/

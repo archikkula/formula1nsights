@@ -1,0 +1,165 @@
+{
+  "bahrain": {
+    "circuitId": "bahrain",
+    "name": "Bahrain International Circuit",
+    "lat": 26.0325,
+    "lng": 50.5106
+  },
+  "jeddah": {
+    "circuitId": "jeddah",
+    "name": "Jeddah Corniche Circuit",
+    "lat": 21.6356,
+    "lng": 39.1389
+  },
+  "albert_park": {
+    "circuitId": "albert_park",
+    "name": "Albert Park Grand Prix Circuit",
+    "lat": -37.8497,
+    "lng": 144.968
+  },
+  "shanghai": {
+    "circuitId": "shanghai",
+    "name": "Shanghai International Circuit",
+    "lat": 31.3389,
+    "lng": 121.22
+  },
+  "miami": {
+    "circuitId": "miami",
+    "name": "Miami International Autodrome",
+    "lat": 25.958,
+    "lng": -80.2389
+  },
+  "imola": {
+    "circuitId": "imola",
+    "name": "Autodromo Enzo e Dino Ferrari (Imola)",
+    "lat": 44.3369,
+    "lng": 11.7167
+  },
+  "catalunya": {
+    "circuitId": "barcelona",
+    "name": "Circuit de Barcelona-Catalunya",
+    "lat": 41.57,
+    "lng": 2.2611
+  },
+  "monaco": {
+    "circuitId": "monaco",
+    "name": "Circuit de Monaco",
+    "lat": 43.7347,
+    "lng": 7.4206
+  },
+  "baku": {
+    "circuitId": "baku",
+    "name": "Baku City Circuit",
+    "lat": 40.3725,
+    "lng": 49.8533
+  },
+  "villeneuve": {
+    "circuitId": "montreal",
+    "name": "Circuit Gilles Villeneuve",
+    "lat": 45.4969,
+    "lng": -73.5448
+  },
+  "red_bull_ring": {
+    "circuitId": "spielberg",
+    "name": "Red Bull Ring",
+    "lat": 47.2206,
+    "lng": 14.7647
+  },
+  "silverstone": {
+    "circuitId": "silverstone",
+    "name": "Silverstone Circuit",
+    "lat": 52.0733,
+    "lng": -1.0146
+  },
+  "hungaroring": {
+    "circuitId": "budapest",
+    "name": "Hungaroring",
+    "lat": 47.5785,
+    "lng": 19.2484
+  },
+  "spa": {
+    "circuitId": "spa",
+    "name": "Circuit de Spa-Francorchamps",
+    "lat": 50.4372,
+    "lng": 5.9712
+  },
+  "zandvoort": {
+    "circuitId": "zandvoort",
+    "name": "Circuit Zandvoort",
+    "lat": 52.3884,
+    "lng": 4.5408
+  },
+  "monza": {
+    "circuitId": "monza",
+    "name": "Autodromo Nazionale Monza",
+    "lat": 45.6196,
+    "lng": 9.2811
+  },
+  "marina_bay": {
+    "circuitId": "singapore",
+    "name": "Marina Bay Street Circuit",
+    "lat": 1.2914,
+    "lng": 103.8631
+  },
+  "suzuka": {
+    "circuitId": "suzuka",
+    "name": "Suzuka International Racing Course",
+    "lat": 34.8431,
+    "lng": 136.5413
+  },
+  "lusail": {
+    "circuitId": "lusail",
+    "name": "Lusail International Circuit",
+    "lat": 25.4162,
+    "lng": 51.5108
+  },
+  "americas": {
+    "circuitId": "cota",
+    "name": "Circuit of the Americas",
+    "lat": 30.1328,
+    "lng": -97.6401
+  },
+  "rodriguez": {
+    "circuitId": "mexico",
+    "name": "Autódromo Hermanos Rodríguez",
+    "lat": 19.4044,
+    "lng": -99.09
+  },
+  "interlagos": {
+    "circuitId": "interlagos",
+    "name": "Autódromo José Carlos Pace (Interlagos)",
+    "lat": -23.7036,
+    "lng": -46.6997
+  },
+  "las_vegas": {
+    "circuitId": "las_vegas",
+    "name": "Las Vegas Strip Circuit",
+    "lat": 36.1314,
+    "lng": -115.1729
+  },
+  "yas_marina": {
+    "circuitId": "abu_dhabi",
+    "name": "Yas Marina Circuit",
+    "lat": 24.4672,
+    "lng": 54.6031
+  },
+  "ricard": {
+    "circuitId": "paulricard",
+    "name": "Circuit Paul Ricard",
+    "lat": 43.2506,
+    "lng": 5.7917
+},
+"hockenheimring": {
+  "circuitId": "hockenheimring",
+  "name": "Hockenheimring",
+  "lat": 49.3271,
+  "lng": 8.5655
+},
+"saopaulo": {
+    "circuitId": "interlagos",
+    "name": "Autódromo José Carlos Pace (São Paulo)",
+    "lat": -23.7036,
+    "lng": -46.6997
+  }
+
+}

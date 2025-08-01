@@ -7,8 +7,6 @@ export default function Landing() {
   className="
     font-f1-display text-8xl md:text-9xl lg:text-[6rem]
     font-bold text-f1-red
-    [ -webkit-text-stroke:2px_#fff ]
-    [ -webkit-text-fill-color:#DC0000 ]
     mb-6
   "
 >

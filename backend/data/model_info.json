@@ -1,0 +1,664 @@
+{
+  "pre_qualifying_model": {
+    "feature_columns": [
+      "Q1_Q2_ratio",
+      "Q2_Q3_ratio",
+      "leak_proof_weighted_mean",
+      "leak_proof_weighted_podium_rate",
+      "leak_proof_current_mean",
+      "leak_proof_current_podium_rate",
+      "leak_proof_current_wins_rate",
+      "leak_proof_recent_form",
+      "leak_proof_consistency",
+      "leak_proof_peak_performance",
+      "leak_proof_career_mean",
+      "leak_proof_career_podium",
+      "leak_proof_last3_fin",
+      "leak_proof_points_rate",
+      "leak_proof_team_mean",
+      "leak_proof_team_podium_rate",
+      "leak_proof_circuit_mean_norm",
+      "leak_proof_circuit_podium_norm",
+      "length_km",
+      "corners",
+      "laps",
+      "avg_temp",
+      "precip_mm",
+      "driver",
+      "circuitId",
+      "team"
+    ],
+    "n_features": 26,
+    "test_r2": 0.4485083818435669,
+    "test_spearman": 0.6582948502308397,
+    "test_rmse": 4.119042226702276,
+    "cv_scores": [
+      {
+        "fold": 1,
+        "r2": 0.4898909330368042,
+        "rmse": 4.109227863186927,
+        "spearman": 0.7250068739155846,
+        "predicting_current_season": false
+      },
+      {
+        "fold": 2,
+        "r2": 0.41847872734069824,
+        "rmse": 4.02797761326377,
+        "spearman": 0.6470523388780011,
+        "predicting_current_season": true
+      },
+      {
+        "fold": 3,
+        "r2": 0.46406102180480957,
+        "rmse": 4.092052311537736,
+        "spearman": 0.6426414564936008,
+        "predicting_current_season": true
+      }
+    ],
+    "avg_cv_r2": 0.4574768940607707,
+    "best_hyperparameters": {
+      "subsample": 0.7,
+      "reg_lambda": 2.0,
+      "reg_alpha": 0,
+      "n_estimators": 100,
+      "min_child_weight": 3,
+      "max_depth": 4,
+      "learning_rate": 0.08,
+      "gamma": 0.1,
+      "colsample_bytree": 0.8
+    },
+    "feature_importance": [
+      [
+        "leak_proof_points_rate",
+        0.1166314035654068
+      ],
+      [
+        "leak_proof_career_mean",
+        0.10803620517253876
+      ],
+      [
+        "Q2_Q3_ratio",
+        0.07300818711519241
+      ],
+      [
+        "leak_proof_recent_form",
+        0.06639336794614792
+      ],
+      [
+        "leak_proof_weighted_mean",
+        0.05786453187465668
+      ],
+      [
+        "leak_proof_last3_fin",
+        0.04805121198296547
+      ],
+      [
+        "leak_proof_current_podium_rate",
+        0.04141268879175186
+      ],
+      [
+        "circuitId",
+        0.04129524156451225
+      ],
+      [
+        "leak_proof_current_wins_rate",
+        0.035811107605695724
+      ],
+      [
+        "precip_mm",
+        0.03192842751741409
+      ],
+      [
+        "Q1_Q2_ratio",
+        0.030302349478006363
+      ],
+      [
+        "leak_proof_team_mean",
+        0.030189024284482002
+      ],
+      [
+        "leak_proof_circuit_mean_norm",
+        0.029876401647925377
+      ],
+      [
+        "leak_proof_weighted_podium_rate",
+        0.02851169742643833
+      ],
+      [
+        "leak_proof_current_mean",
+        0.028198974207043648
+      ],
+      [
+        "leak_proof_peak_performance",
+        0.02590983547270298
+      ],
+      [
+        "driver",
+        0.025242537260055542
+      ],
+      [
+        "team",
+        0.024692252278327942
+      ],
+      [
+        "leak_proof_career_podium",
+        0.024636654183268547
+      ],
+      [
+        "avg_temp",
+        0.02307944931089878
+      ]
+    ],
+    "categorical_encoders": {
+      "driver": [
+        "albon",
+        "alonso",
+        "antonelli",
+        "bearman",
+        "bortoleto",
+        "bottas",
+        "colapinto",
+        "doohan",
+        "gasly",
+        "hadjar",
+        "hamilton",
+        "hulkenberg",
+        "kevin_magnussen",
+        "lawson",
+        "leclerc",
+        "max_verstappen",
+        "norris",
+        "ocon",
+        "perez",
+        "piastri",
+        "ricciardo",
+        "russell",
+        "sainz",
+        "sargeant",
+        "stroll",
+        "tsunoda",
+        "zhou"
+      ],
+      "circuitId": [
+        "albert_park",
+        "americas",
+        "bahrain",
+        "baku",
+        "catalunya",
+        "hungaroring",
+        "imola",
+        "interlagos",
+        "jeddah",
+        "losail",
+        "marina_bay",
+        "miami",
+        "monaco",
+        "monza",
+        "red_bull_ring",
+        "rodriguez",
+        "shanghai",
+        "silverstone",
+        "spa",
+        "suzuka",
+        "vegas",
+        "villeneuve",
+        "yas_marina",
+        "zandvoort"
+      ],
+      "team": [
+        "alpine",
+        "aston_martin",
+        "ferrari",
+        "haas",
+        "kick_sauber",
+        "mclaren",
+        "mercedes",
+        "rb",
+        "red_bull",
+        "unknown",
+        "williams"
+      ],
+      "driver_team_interaction": [
+        "albon_williams",
+        "alonso_aston_martin",
+        "antonelli_mercedes",
+        "bearman_haas",
+        "bortoleto_kick_sauber",
+        "bottas_unknown",
+        "colapinto_alpine",
+        "doohan_unknown",
+        "gasly_alpine",
+        "hadjar_rb",
+        "hamilton_ferrari",
+        "hulkenberg_kick_sauber",
+        "kevin_magnussen_unknown",
+        "lawson_rb",
+        "leclerc_ferrari",
+        "max_verstappen_red_bull",
+        "norris_mclaren",
+        "ocon_haas",
+        "perez_unknown",
+        "piastri_mclaren",
+        "ricciardo_unknown",
+        "russell_mercedes",
+        "sainz_williams",
+        "sargeant_unknown",
+        "stroll_aston_martin",
+        "tsunoda_red_bull",
+        "zhou_unknown"
+      ]
+    },
+    "data_driven_features_count": 0,
+    "data_driven_importance_total": 0.0,
+    "interaction_features_count": 4,
+    "interaction_importance_total": 0.15041619539260864,
+    "pure_data_driven": true,
+    "zero_hard_coding": true,
+    "enhanced_with_optimization": true,
+    "current_season_weight": 0.95,
+    "current_season": 2025,
+    "uncertainty": {
+      "mean_uncertainty": 3.730292558670044,
+      "uncertainty_range": [
+        2.8458878993988037,
+        4.6237568855285645
+      ]
+    }
+  },
+  "post_qualifying_model": {
+    "feature_columns": [
+      "Q1_Q2_ratio",
+      "Q2_Q3_ratio",
+      "leak_proof_weighted_mean",
+      "leak_proof_weighted_podium_rate",
+      "leak_proof_current_mean",
+      "leak_proof_current_podium_rate",
+      "leak_proof_current_wins_rate",
+      "leak_proof_recent_form",
+      "leak_proof_consistency",
+      "leak_proof_peak_performance",
+      "leak_proof_career_mean",
+      "leak_proof_career_podium",
+      "leak_proof_last3_fin",
+      "leak_proof_points_rate",
+      "leak_proof_team_mean",
+      "leak_proof_team_podium_rate",
+      "leak_proof_circuit_mean_norm",
+      "leak_proof_circuit_podium_norm",
+      "length_km",
+      "corners",
+      "laps",
+      "avg_temp",
+      "precip_mm",
+      "driver",
+      "circuitId",
+      "team",
+      "Q1",
+      "Q2",
+      "Q3",
+      "made_Q2",
+      "made_Q3",
+      "grid_position"
+    ],
+    "n_features": 32,
+    "test_r2": 0.5603915452957153,
+    "test_spearman": 0.7174531727054811,
+    "test_rmse": 3.6775605033497873,
+    "cv_scores": [
+      {
+        "fold": 1,
+        "r2": 0.4311590790748596,
+        "rmse": 4.339344232827315,
+        "spearman": 0.6914412354008237,
+        "predicting_current_season": false
+      },
+      {
+        "fold": 2,
+        "r2": 0.47441691160202026,
+        "rmse": 3.829348995169628,
+        "spearman": 0.6876985924707453,
+        "predicting_current_season": true
+      },
+      {
+        "fold": 3,
+        "r2": 0.5276631712913513,
+        "rmse": 3.841575814012037,
+        "spearman": 0.7184293359543864,
+        "predicting_current_season": true
+      }
+    ],
+    "avg_cv_r2": 0.4777463873227437,
+    "best_hyperparameters": {
+      "subsample": 0.7,
+      "reg_lambda": 0.5,
+      "reg_alpha": 0.1,
+      "n_estimators": 100,
+      "min_child_weight": 2,
+      "max_depth": 7,
+      "learning_rate": 0.05,
+      "gamma": 0.5,
+      "colsample_bytree": 0.8
+    },
+    "feature_importance": [
+      [
+        "leak_proof_points_rate",
+        0.1173073947429657
+      ],
+      [
+        "leak_proof_career_mean",
+        0.0751938670873642
+      ],
+      [
+        "leak_proof_weighted_mean",
+        0.06661146134138107
+      ],
+      [
+        "leak_proof_recent_form",
+        0.05154003947973251
+      ],
+      [
+        "Q3",
+        0.05029691010713577
+      ],
+      [
+        "Q2_Q3_ratio",
+        0.04257984086871147
+      ],
+      [
+        "leak_proof_current_mean",
+        0.0422876700758934
+      ],
+      [
+        "grid_position",
+        0.04139367863535881
+      ],
+      [
+        "leak_proof_current_podium_rate",
+        0.03649289906024933
+      ],
+      [
+        "leak_proof_circuit_mean_norm",
+        0.030797351151704788
+      ],
+      [
+        "Q1",
+        0.030370978638529778
+      ],
+      [
+        "leak_proof_team_mean",
+        0.02887207828462124
+      ],
+      [
+        "Q2",
+        0.0282580628991127
+      ],
+      [
+        "driver",
+        0.026703739538788795
+      ],
+      [
+        "team",
+        0.025301849469542503
+      ],
+      [
+        "leak_proof_weighted_podium_rate",
+        0.02368433028459549
+      ],
+      [
+        "precip_mm",
+        0.023367201909422874
+      ],
+      [
+        "leak_proof_circuit_podium_norm",
+        0.022621778771281242
+      ],
+      [
+        "avg_temp",
+        0.02125011943280697
+      ],
+      [
+        "leak_proof_team_podium_rate",
+        0.02124824747443199
+      ]
+    ],
+    "categorical_encoders": {
+      "driver": [
+        "albon",
+        "alonso",
+        "antonelli",
+        "bearman",
+        "bortoleto",
+        "bottas",
+        "colapinto",
+        "doohan",
+        "gasly",
+        "hadjar",
+        "hamilton",
+        "hulkenberg",
+        "kevin_magnussen",
+        "lawson",
+        "leclerc",
+        "max_verstappen",
+        "norris",
+        "ocon",
+        "perez",
+        "piastri",
+        "ricciardo",
+        "russell",
+        "sainz",
+        "sargeant",
+        "stroll",
+        "tsunoda",
+        "zhou"
+      ],
+      "circuitId": [
+        "albert_park",
+        "americas",
+        "bahrain",
+        "baku",
+        "catalunya",
+        "hungaroring",
+        "imola",
+        "interlagos",
+        "jeddah",
+        "losail",
+        "marina_bay",
+        "miami",
+        "monaco",
+        "monza",
+        "red_bull_ring",
+        "rodriguez",
+        "shanghai",
+        "silverstone",
+        "spa",
+        "suzuka",
+        "vegas",
+        "villeneuve",
+        "yas_marina",
+        "zandvoort"
+      ],
+      "team": [
+        "alpine",
+        "aston_martin",
+        "ferrari",
+        "haas",
+        "kick_sauber",
+        "mclaren",
+        "mercedes",
+        "rb",
+        "red_bull",
+        "unknown",
+        "williams"
+      ],
+      "driver_team_interaction": [
+        "albon_williams",
+        "alonso_aston_martin",
+        "antonelli_mercedes",
+        "bearman_haas",
+        "bortoleto_kick_sauber",
+        "bottas_unknown",
+        "colapinto_alpine",
+        "doohan_unknown",
+        "gasly_alpine",
+        "hadjar_rb",
+        "hamilton_ferrari",
+        "hulkenberg_kick_sauber",
+        "kevin_magnussen_unknown",
+        "lawson_rb",
+        "leclerc_ferrari",
+        "max_verstappen_red_bull",
+        "norris_mclaren",
+        "ocon_haas",
+        "perez_unknown",
+        "piastri_mclaren",
+        "ricciardo_unknown",
+        "russell_mercedes",
+        "sainz_williams",
+        "sargeant_unknown",
+        "stroll_aston_martin",
+        "tsunoda_red_bull",
+        "zhou_unknown"
+      ]
+    },
+    "data_driven_features_count": 0,
+    "data_driven_importance_total": 0.0,
+    "interaction_features_count": 4,
+    "interaction_importance_total": 0.11413943767547607,
+    "pure_data_driven": true,
+    "zero_hard_coding": true,
+    "enhanced_with_optimization": true,
+    "current_season_weight": 0.95,
+    "current_season": 2025,
+    "uncertainty": {
+      "mean_uncertainty": 4.142098903656006,
+      "uncertainty_range": [
+        2.970773696899414,
+        4.837425708770752
+      ]
+    }
+  },
+  "feature_columns": [
+    "Q1_Q2_ratio",
+    "Q2_Q3_ratio",
+    "leak_proof_weighted_mean",
+    "leak_proof_weighted_podium_rate",
+    "leak_proof_current_mean",
+    "leak_proof_current_podium_rate",
+    "leak_proof_current_wins_rate",
+    "leak_proof_recent_form",
+    "leak_proof_consistency",
+    "leak_proof_peak_performance",
+    "leak_proof_career_mean",
+    "leak_proof_career_podium",
+    "leak_proof_last3_fin",
+    "leak_proof_points_rate",
+    "leak_proof_team_mean",
+    "leak_proof_team_podium_rate",
+    "leak_proof_circuit_mean_norm",
+    "leak_proof_circuit_podium_norm",
+    "length_km",
+    "corners",
+    "laps",
+    "avg_temp",
+    "precip_mm",
+    "driver",
+    "circuitId",
+    "team",
+    "Q1",
+    "Q2",
+    "Q3",
+    "made_Q2",
+    "made_Q3",
+    "grid_position"
+  ],
+  "pre_qual_features": [
+    "Q1_Q2_ratio",
+    "Q2_Q3_ratio",
+    "leak_proof_weighted_mean",
+    "leak_proof_weighted_podium_rate",
+    "leak_proof_current_mean",
+    "leak_proof_current_podium_rate",
+    "leak_proof_current_wins_rate",
+    "leak_proof_recent_form",
+    "leak_proof_consistency",
+    "leak_proof_peak_performance",
+    "leak_proof_career_mean",
+    "leak_proof_career_podium",
+    "leak_proof_last3_fin",
+    "leak_proof_points_rate",
+    "leak_proof_team_mean",
+    "leak_proof_team_podium_rate",
+    "leak_proof_circuit_mean_norm",
+    "leak_proof_circuit_podium_norm",
+    "length_km",
+    "corners",
+    "laps",
+    "avg_temp",
+    "precip_mm",
+    "driver",
+    "circuitId",
+    "team"
+  ],
+  "post_qual_features": [
+    "Q1_Q2_ratio",
+    "Q2_Q3_ratio",
+    "leak_proof_weighted_mean",
+    "leak_proof_weighted_podium_rate",
+    "leak_proof_current_mean",
+    "leak_proof_current_podium_rate",
+    "leak_proof_current_wins_rate",
+    "leak_proof_recent_form",
+    "leak_proof_consistency",
+    "leak_proof_peak_performance",
+    "leak_proof_career_mean",
+    "leak_proof_career_podium",
+    "leak_proof_last3_fin",
+    "leak_proof_points_rate",
+    "leak_proof_team_mean",
+    "leak_proof_team_podium_rate",
+    "leak_proof_circuit_mean_norm",
+    "leak_proof_circuit_podium_norm",
+    "length_km",
+    "corners",
+    "laps",
+    "avg_temp",
+    "precip_mm",
+    "driver",
+    "circuitId",
+    "team",
+    "Q1",
+    "Q2",
+    "Q3",
+    "made_Q2",
+    "made_Q3",
+    "grid_position"
+  ],
+  "categorical_features": [
+    "driver",
+    "circuitId",
+    "team"
+  ],
+  "uses_categorical_encoding": true,
+  "pure_data_driven": true,
+  "zero_hard_coding": true,
+  "enhanced_with_optimization": true,
+  "hyperparameter_optimized": true,
+  "current_season_weight": 0.95,
+  "historical_season_weight": 0.050000000000000044,
+  "current_season": 2025,
+  "training_timestamp": "2025-08-01T14:49:39.616069",
+  "data_driven_principles": {
+    "no_team_boosts": true,
+    "no_driver_boosts": true,
+    "no_hard_coded_parameters": true,
+    "temporal_weighting_only": true,
+    "model_learns_from_data": true,
+    "hyperparameter_optimized": true,
+    "enhanced_feature_engineering": true
+  },
+  "training_data_years": [
+    2024,
+    2025
+  ],
+  "weight_distribution": "95% weight to 2025, 5% to historical data"
+}

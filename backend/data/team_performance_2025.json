@@ -1,0 +1,72 @@
+{
+  "williams": {
+    "competitiveness": 0.5042585784313726,
+    "avg_position": 10.914828431372548,
+    "podium_rate": 0.00661764705882353,
+    "wins_rate": 0.0014705882352941176,
+    "current_season_races": 24
+  },
+  "aston_martin": {
+    "competitiveness": 0.39064861111111115,
+    "avg_position": 13.187027777777777,
+    "podium_rate": 0.0,
+    "wins_rate": 0.0,
+    "current_season_races": 25
+  },
+  "mercedes": {
+    "competitiveness": 0.6651877551020409,
+    "avg_position": 7.6962448979591835,
+    "podium_rate": 0.23820408163265305,
+    "wins_rate": 0.04106122448979592,
+    "current_season_races": 25
+  },
+  "haas": {
+    "competitiveness": 0.42652692307692314,
+    "avg_position": 12.469461538461537,
+    "podium_rate": 0.001,
+    "wins_rate": 0.0,
+    "current_season_races": 26
+  },
+  "kick_sauber": {
+    "competitiveness": 0.39658723404255325,
+    "avg_position": 13.068255319148935,
+    "podium_rate": 0.03906382978723404,
+    "wins_rate": 0.0,
+    "current_season_races": 25
+  },
+  "alpine": {
+    "competitiveness": 0.40380475594493126,
+    "avg_position": 12.923904881101375,
+    "podium_rate": 0.0010638297872340426,
+    "wins_rate": 0.0,
+    "current_season_races": 17
+  },
+  "rb": {
+    "competitiveness": 0.43481250000000005,
+    "avg_position": 12.303749999999999,
+    "podium_rate": 0.0,
+    "wins_rate": 0.0,
+    "current_season_races": 24
+  },
+  "ferrari": {
+    "competitiveness": 0.7690448943661972,
+    "avg_position": 5.619102112676057,
+    "podium_rate": 0.2141138497652582,
+    "wins_rate": 0.003521126760563381,
+    "current_season_races": 24
+  },
+  "red_bull": {
+    "competitiveness": 0.6336384976525822,
+    "avg_position": 8.327230046948356,
+    "podium_rate": 0.2112969483568075,
+    "wins_rate": 0.0869131455399061,
+    "current_season_races": 24
+  },
+  "mclaren": {
+    "competitiveness": 0.906533264033264,
+    "avg_position": 2.869334719334719,
+    "podium_rate": 0.8329002079002078,
+    "wins_rate": 0.3761954261954262,
+    "current_season_races": 26
+  }
+}

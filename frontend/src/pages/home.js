@@ -1,59 +1,64 @@
 // frontend/src/pages/Home.js
 
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect } from 'react';
 
 export default function Home() {
-  const [news,   setNews]   = useState([]);
+  const [news, setNews] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [error,   setError]   = useState(null);
+  const [error, setError] = useState(null);
 
   useEffect(() => {
-    fetch("/api/news")
-      .then(r => {
-        if (!r.ok) throw new Error(r.status);
-        return r.json();
+    fetch('/api/news')
+      .then(res => {
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        return res.json();
       })
-      .then(data => { setNews(data); setLoading(false); })
-      .catch(e => { setError(e.message); setLoading(false); });
+      .then(data => {
+        setNews(data);
+        setLoading(false);
+      })
+      .catch(err => {
+        setError(err.message);
+        setLoading(false);
+      });
   }, []);
 
-  if (loading) return <p className="text-center">Loading news…</p>;
-  if (error)   return <p className="text-center text-red-600">Error: {error}</p>;
-  if (!news.length) return <p className="text-center">No news items yet.</p>;
+  if (loading) return <p className="text-center text-white">Loading news…</p>;
+  if (error)   return <p className="text-center text-red-500">Error: {error}</p>;
+  if (!news.length) return <p className="text-center text-white">No news items yet.</p>;
 
-    return (
-      
-    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-      {news.map((item, i) => (
-        <div
-          key={i}
-          className="bg-white rounded-lg overflow-hidden shadow-lg flex flex-col"
-        >
-          {item.image_url && (
-            <img
-              src={item.image_url}
-              alt={item.headline}
-              className="h-48 w-full object-cover"
-            />
-          )}
-          <div className="p-4 flex-1 flex flex-col">
-            <h3 className="font-f1-bold text-xl text-f1-black mb-2">
+  return (
+    <div className="px-4 md:px-8 py-8">
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+        {news.map((item, i) => (
+          <div
+            key={i}
+            className="bg-f1-black p-6 rounded-lg"
+          >
+            {item.image_url && (
+              <img
+                src={item.image_url}
+                alt={item.headline}
+                className="h-48 w-full object-cover rounded-md mb-4"
+              />
+            )}
+            <h3 className="text-2xl font-bold text-white mb-2">
               {item.headline}
             </h3>
-            <p className="text-gray-700 text-sm flex-1 mb-4">
+            <p className="text-sm font-light text-white mb-4">
               {item.summary}
             </p>
             <a
               href={item.url}
               target="_blank"
               rel="noopener noreferrer"
-              className="mt-auto text-f1-red hover:underline"
+              className="text-f1-red hover:underline font-medium"
             >
               Read more →
             </a>
           </div>
-        </div>
-      ))}
+        ))}
+      </div>
     </div>
   );
 }

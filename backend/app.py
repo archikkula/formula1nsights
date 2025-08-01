@@ -5,6 +5,15 @@ from sqlalchemy.orm import sessionmaker
 from models import Base, NewsItem
 from apscheduler.schedulers.background import BackgroundScheduler
 from news_job import job as news_job
+from fetch_all_races import fetch_all_races  
+from predictor_api import bp as predictor_bp
+
+
+scheduler = BackgroundScheduler()
+
+scheduler.add_job(func=fetch_all_races, trigger="cron", hour=12, minute=0)
+scheduler.start()
+
 
 app = Flask(__name__)
 CORS(app)
@@ -12,6 +21,11 @@ CORS(app)
 engine = create_engine("sqlite:///news.db", echo=False)
 Base.metadata.create_all(engine)
 Session = sessionmaker(bind=engine)
+
+#app.register_blueprint(predictor_bp, url_prefix="/api")
+app.register_blueprint(predictor_bp)
+
+print(app.url_map)   # ← add this line
 
 @app.route("/api/health")
 def health_check():

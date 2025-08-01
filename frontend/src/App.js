@@ -10,7 +10,6 @@ export default function App() {
     <div className="font-f1-primary bg-f1-black text-f1-white min-h-screen">
       <nav className="fixed top-0 left-0 w-full bg-f1-black text-f1-white z-50 shadow-md h-16 flex items-center px-6">
         <a href="/"          className="text-f1-white hover:text-f1-red mr-6">Home</a>
-        <a href="/drivers"   className="text-f1-white hover:text-f1-red mr-6">Drivers</a>
         <a href="/predictor" className="text-f1-white hover:text-f1-red">Predictor</a>
       </nav>
 

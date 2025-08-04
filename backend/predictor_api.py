@@ -671,6 +671,104 @@ def health_check():
         return jsonify(status)
     except Exception as e:
         return jsonify({"status": "unhealthy", "error": str(e)}), 500
+    
+# Add this endpoint to your predictor_api.py file
+
+@bp.route("/available_races")
+def get_available_races():
+    """Get available races from the predictor features CSV"""
+    try:
+        # Load your circuits data
+        circuit_data = {
+            "bahrain": { "name": "Bahrain International Circuit", "grandPrix": "Bahrain Grand Prix" },
+            "jeddah": { "name": "Jeddah Corniche Circuit", "grandPrix": "Saudi Arabian Grand Prix" },
+            "albert_park": { "name": "Albert Park Grand Prix Circuit", "grandPrix": "Australian Grand Prix" },
+            "shanghai": { "name": "Shanghai International Circuit", "grandPrix": "Chinese Grand Prix" },
+            "miami": { "name": "Miami International Autodrome", "grandPrix": "Miami Grand Prix" },
+            "imola": { "name": "Autodromo Enzo e Dino Ferrari", "grandPrix": "Emilia Romagna Grand Prix" },
+            "catalunya": { "name": "Circuit de Barcelona-Catalunya", "grandPrix": "Spanish Grand Prix" },
+            "monaco": { "name": "Circuit de Monaco", "grandPrix": "Monaco Grand Prix" },
+            "baku": { "name": "Baku City Circuit", "grandPrix": "Azerbaijan Grand Prix" },
+            "villeneuve": { "name": "Circuit Gilles Villeneuve", "grandPrix": "Canadian Grand Prix" },
+            "red_bull_ring": { "name": "Red Bull Ring", "grandPrix": "Austrian Grand Prix" },
+            "silverstone": { "name": "Silverstone Circuit", "grandPrix": "British Grand Prix" },
+            "hungaroring": { "name": "Hungaroring", "grandPrix": "Hungarian Grand Prix" },
+            "spa": { "name": "Circuit de Spa-Francorchamps", "grandPrix": "Belgian Grand Prix" },
+            "zandvoort": { "name": "Circuit Zandvoort", "grandPrix": "Dutch Grand Prix" },
+            "monza": { "name": "Autodromo Nazionale Monza", "grandPrix": "Italian Grand Prix" },
+            "marina_bay": { "name": "Marina Bay Street Circuit", "grandPrix": "Singapore Grand Prix" },
+            "suzuka": { "name": "Suzuka International Racing Course", "grandPrix": "Japanese Grand Prix" },
+            "lusail": { "name": "Lusail International Circuit", "grandPrix": "Qatar Grand Prix" },
+            "americas": { "name": "Circuit of the Americas", "grandPrix": "United States Grand Prix" },
+            "rodriguez": { "name": "Autódromo Hermanos Rodríguez", "grandPrix": "Mexican Grand Prix" },
+            "interlagos": { "name": "Autódromo José Carlos Pace", "grandPrix": "Brazilian Grand Prix" },
+            "las_vegas": { "name": "Las Vegas Strip Circuit", "grandPrix": "Las Vegas Grand Prix" },
+            "yas_marina": { "name": "Yas Marina Circuit", "grandPrix": "Abu Dhabi Grand Prix" }
+        }
+        
+        # Try to load data from your existing file structure
+        data_paths = [
+            "data/predictor_features.csv",
+            "predictor_features.csv"
+        ]
+        
+        feats = None
+        for path in data_paths:
+            try:
+                feats = pd.read_csv(path)
+                print(f"✅ Loaded race data from {path}")
+                break
+            except FileNotFoundError:
+                continue
+        
+        if feats is None:
+            return jsonify({"error": "predictor_features.csv not found"}), 404
+        
+        # Get unique combinations of season, round, and circuitId
+        if 'circuitId' in feats.columns:
+            race_info = feats.groupby(['season', 'round', 'circuitId']).first().reset_index()
+        else:
+            # Fallback if no circuitId column
+            race_info = feats.groupby(['season', 'round']).first().reset_index()
+            race_info['circuitId'] = 'unknown'
+        
+        # Organize by season
+        races_by_season = {}
+        available_seasons = sorted(race_info['season'].unique().tolist())
+        
+        for season in available_seasons:
+            season_races = race_info[race_info['season'] == season].copy()
+            season_races = season_races.sort_values('round')
+            
+            races_list = []
+            for _, race in season_races.iterrows():
+                circuit_id = race.get('circuitId', 'unknown')
+                
+                # Get race name from circuit data
+                circuit_info = circuit_data.get(circuit_id, {})
+                race_name = circuit_info.get('grandPrix', f'Round {race["round"]} Grand Prix')
+                
+                races_list.append({
+                    'id': circuit_id,
+                    'round': int(race['round']),
+                    'name': race_name,
+                    'circuit_name': circuit_info.get('name', 'Unknown Circuit'),
+                    'date': race.get('race_date', 'Unknown'),
+                    'circuitId': circuit_id
+                })
+            
+            races_by_season[str(season)] = races_list
+        
+        return jsonify({
+            'races': races_by_season,
+            'seasons': available_seasons,
+            'total_races': len(race_info),
+            'has_circuit_data': 'circuitId' in feats.columns,
+            'data_source': 'predictor_features.csv'
+        })
+        
+    except Exception as e:
+        return jsonify({"error": f"Failed to load available races: {str(e)}"}), 500
 
 # Initialize models on import
 try:

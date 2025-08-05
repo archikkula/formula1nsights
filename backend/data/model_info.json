@@ -258,10 +258,10 @@
     "current_season_weight": 0.95,
     "current_season": 2025,
     "uncertainty": {
-      "mean_uncertainty": 4.299741268157959,
+      "mean_uncertainty": 4.305886268615723,
       "uncertainty_range": [
-        3.1276419162750244,
-        5.303354740142822
+        3.360244035720825,
+        5.221267223358154
       ]
     }
   },
@@ -530,10 +530,10 @@
     "current_season_weight": 0.95,
     "current_season": 2025,
     "uncertainty": {
-      "mean_uncertainty": 4.242216110229492,
+      "mean_uncertainty": 4.267223834991455,
       "uncertainty_range": [
-        3.3643910884857178,
-        5.020849227905273
+        3.386263132095337,
+        5.269822597503662
       ]
     }
   },
@@ -646,7 +646,7 @@
   "current_season_weight": 0.95,
   "historical_season_weight": 0.050000000000000044,
   "current_season": 2025,
-  "training_timestamp": "2025-08-04T15:51:04.355536",
+  "training_timestamp": "2025-08-04T18:35:45.386711",
   "data_driven_principles": {
     "no_team_boosts": true,
     "no_driver_boosts": true,
@@ -660,5 +660,129 @@
     2024,
     2025
   ],
-  "weight_distribution": "95% weight to 2025, 5% to historical data"
+  "weight_distribution": "95% weight to 2025, 5% to historical data",
+  "grid_position_model": {
+    "model_type": "xgboost_regressor",
+    "target": "grid_position",
+    "feature_columns": [
+      "leak_proof_weighted_mean",
+      "leak_proof_weighted_podium_rate",
+      "leak_proof_current_mean",
+      "leak_proof_current_podium_rate",
+      "leak_proof_current_wins_rate",
+      "leak_proof_recent_form",
+      "leak_proof_consistency",
+      "leak_proof_peak_performance",
+      "leak_proof_career_mean",
+      "leak_proof_career_podium",
+      "leak_proof_last3_fin",
+      "leak_proof_points_rate",
+      "leak_proof_team_mean",
+      "leak_proof_team_podium_rate",
+      "leak_proof_circuit_mean_norm",
+      "leak_proof_circuit_podium_norm",
+      "length_km",
+      "corners",
+      "laps",
+      "avg_temp",
+      "precip_mm",
+      "driver",
+      "circuitId",
+      "team"
+    ],
+    "categorical_features": [
+      "driver",
+      "circuitId",
+      "team"
+    ],
+    "n_features": 24,
+    "train_r2": 0.9977160136673582,
+    "test_r2": 0.4732463105682905,
+    "train_rmse": 0.21743567477266298,
+    "test_rmse": 3.5828503187799314,
+    "cv_r2_mean": -0.25787546640418146,
+    "cv_r2_std": 0.3359874193460952,
+    "feature_importance": [
+      [
+        "leak_proof_career_mean",
+        0.11568295210599899
+      ],
+      [
+        "leak_proof_circuit_podium_norm",
+        0.09387001395225525
+      ],
+      [
+        "precip_mm",
+        0.06645888835191727
+      ],
+      [
+        "leak_proof_circuit_mean_norm",
+        0.06561987847089767
+      ],
+      [
+        "leak_proof_recent_form",
+        0.06383243203163147
+      ],
+      [
+        "length_km",
+        0.05593930184841156
+      ],
+      [
+        "leak_proof_points_rate",
+        0.05550563335418701
+      ],
+      [
+        "leak_proof_current_podium_rate",
+        0.05331012234091759
+      ],
+      [
+        "avg_temp",
+        0.04166438803076744
+      ],
+      [
+        "circuitId",
+        0.040205344557762146
+      ],
+      [
+        "laps",
+        0.032411955296993256
+      ],
+      [
+        "corners",
+        0.031138146296143532
+      ],
+      [
+        "driver",
+        0.02939704619348049
+      ],
+      [
+        "leak_proof_team_mean",
+        0.028939416632056236
+      ],
+      [
+        "leak_proof_current_wins_rate",
+        0.028170662000775337
+      ],
+      [
+        "team",
+        0.027218051254749298
+      ],
+      [
+        "leak_proof_team_podium_rate",
+        0.026572883129119873
+      ],
+      [
+        "leak_proof_career_podium",
+        0.026517128571867943
+      ],
+      [
+        "leak_proof_current_mean",
+        0.02470497041940689
+      ],
+      [
+        "leak_proof_consistency",
+        0.019406763836741447
+      ]
+    ]
+  }
 }

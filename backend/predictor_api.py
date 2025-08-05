@@ -10,25 +10,28 @@ warnings.filterwarnings('ignore')
 bp = Blueprint("predictor_api", __name__)
 
 # Global model variables
-fastest_model = None
-finish_model = None
+globalfinish_model = None
 finish_model_pre_qual = None
+grid_model = None
 FEATURE_COLUMNS = None
 PRE_QUAL_FEATURES = None
 CATEGORICAL_FEATURES = None
 ENCODERS_PRE = None
 ENCODERS_POST = None
 MODEL_INFO = None
+GRID_ENCODERS = None
+GRID_FEATURES = None
 
 def load_models():
+    
     """Load models and encoders with data/ folder structure support"""
-    global fastest_model, finish_model, finish_model_pre_qual
+    global finish_model, finish_model_pre_qual
     global FEATURE_COLUMNS, PRE_QUAL_FEATURES, CATEGORICAL_FEATURES
     global ENCODERS_PRE, ENCODERS_POST, MODEL_INFO
+    global grid_model, GRID_ENCODERS, GRID_FEATURES
     
     try:
-        # Load existing models
-        fastest_model = joblib.load("models/xgb_fastest_lap.pkl")
+        
         finish_model = joblib.load("models/xgb_finish_ranker.pkl")
         
         # Try to load the new pre-qualifying model
@@ -76,11 +79,48 @@ def load_models():
             FEATURE_COLUMNS = MODEL_INFO.get('feature_columns', [])
             PRE_QUAL_FEATURES = MODEL_INFO.get('pre_qual_features', FEATURE_COLUMNS)
             CATEGORICAL_FEATURES = MODEL_INFO.get('categorical_features', [])
+        elif 'grid_position_model' in MODEL_INFO:
+            # We have grid model but missing race model info - use fallback
+            print("⚠️  Race model features not in model_info.json, using fallback")
+            FEATURE_COLUMNS = [
+                'leak_proof_team_mean', 'corners', 'driver', 'leak_proof_points_rate', 
+                'length_km', 'leak_proof_peak_performance', 'leak_proof_current_podium_rate', 
+                'leak_proof_circuit_podium_norm', 'Q1', 'leak_proof_last3_fin', 'grid_position', 
+                'leak_proof_weighted_podium_rate', 'team', 'leak_proof_career_mean', 'precip_mm', 
+                'leak_proof_recent_form', 'leak_proof_weighted_mean', 'leak_proof_circuit_mean_norm', 
+                'leak_proof_current_wins_rate', 'made_Q2', 'made_Q3', 'avg_temp', 'circuitId', 
+                'laps', 'leak_proof_consistency', 'Q2_Q3_ratio', 'Q3', 'leak_proof_career_podium', 
+                'leak_proof_current_mean', 'Q2', 'leak_proof_team_podium_rate', 'Q1_Q2_ratio'
+            ]
+            PRE_QUAL_FEATURES = [f for f in FEATURE_COLUMNS if f not in ['Q1', 'Q2', 'Q3', 'Q1_Q2_ratio', 'Q2_Q3_ratio', 'made_Q2', 'made_Q3', 'grid_position']]
+            CATEGORICAL_FEATURES = ['driver', 'circuitId', 'team']
         else:
             # Old format - backward compatibility
             FEATURE_COLUMNS = MODEL_INFO.get('feature_columns', [])
             PRE_QUAL_FEATURES = FEATURE_COLUMNS
             CATEGORICAL_FEATURES = MODEL_INFO.get('categorical_features', [])
+        
+        # Load grid position model
+        try:
+            grid_model = joblib.load("models/xgb_grid_predictor.pkl")
+            print("✅ Loaded grid position predictor")
+        except FileNotFoundError:
+            print("⚠️  Grid position predictor not found")
+            grid_model = None
+        
+        try:
+            GRID_ENCODERS = joblib.load("models/label_encoders_grid.pkl")
+            print("✅ Loaded grid position encoders")
+        except FileNotFoundError:
+            print("⚠️  Grid position encoders not found")
+            GRID_ENCODERS = {}
+        
+        # Get grid features from model info
+        if MODEL_INFO and 'grid_position_model' in MODEL_INFO:
+            GRID_FEATURES = MODEL_INFO['grid_position_model'].get('feature_columns', [])
+            print(f"✅ Grid model features: {len(GRID_FEATURES)}")
+        else:
+            GRID_FEATURES = []
         
         print(f"✅ Loaded models with {len(FEATURE_COLUMNS)} post-qual features, {len(PRE_QUAL_FEATURES)} pre-qual features")
         print(f"✅ Categorical features: {CATEGORICAL_FEATURES}")
@@ -272,71 +312,6 @@ def predict_finish_pos_round():
     except Exception as e:
         return jsonify({"error": f"Prediction failed: {str(e)}"}), 500
 
-@bp.route("/predict_fastest_lap_round")
-def predict_fastest_lap_round():
-    """Predict fastest lap times for a completed race"""
-    try:
-        season = request.args.get("season", type=int)
-        rnd = request.args.get("round", type=int)
-        include_confidence = request.args.get("confidence", "false").lower() == "true"
-        
-        # Try to load data from data/ folder
-        data_paths = [
-            "data/predictor_features.csv",
-            "predictor_features.csv"
-        ]
-        
-        feats = None
-        for path in data_paths:
-            try:
-                feats = pd.read_csv(path)
-                break
-            except FileNotFoundError:
-                continue
-        
-        if feats is None:
-            return jsonify({"error": "predictor_features.csv not found - run feature engineering first"}), 404
-        
-        sub = feats.loc[(feats["season"] == season) & (feats["round"] == rnd)]
-        
-        if sub.empty:
-            return jsonify({"error": "No features for that season/round"}), 404
-        
-        drivers = sub["driver"].tolist() if "driver" in sub.columns else ["unknown"] * len(sub)
-        
-        # Use enhanced feature preparation
-        X = prepare_features_enhanced(sub, FEATURE_COLUMNS, ENCODERS_POST, CATEGORICAL_FEATURES, "post_qualifying")
-        
-        if include_confidence:
-            preds, confidence = get_prediction_confidence(fastest_model, X)
-        else:
-            preds = fastest_model.predict(X)
-            confidence = None
-        
-        actuals = sub["fastest_lap"].tolist() if "fastest_lap" in sub.columns else [None] * len(sub)
-        
-        results = []
-        for i, (d, p, a) in enumerate(zip(drivers, preds, actuals)):
-            entry = {
-                "driver": d, 
-                "predicted": float(p)
-            }
-            if a is not None:
-                entry["actual"] = float(a)
-            if confidence is not None:
-                entry["confidence"] = float(confidence[i])
-            results.append(entry)
-        
-        return jsonify({
-            "season": season, 
-            "round": rnd, 
-            "predictions": results,
-            "model_type": "fastest_lap",
-            "uses_categorical": bool(CATEGORICAL_FEATURES)
-        })
-        
-    except Exception as e:
-        return jsonify({"error": f"Fastest lap prediction failed: {str(e)}"}), 500
 
 @bp.route("/predict_finish_pos_future")
 def predict_finish_pos_future():
@@ -457,77 +432,6 @@ def predict_finish_pos_future():
         print(f"Future prediction error: {error_details}")
         return jsonify({"error": f"Future finish pos prediction failed: {str(e)}", "details": error_details}), 500
 
-@bp.route("/predict_fastest_lap_future")
-def predict_fastest_lap_future():
-    """Enhanced fastest lap predictions for future races"""
-    try:
-        season = request.args.get("season", type=int)
-        include_confidence = request.args.get("confidence", "false").lower() == "true"
-        
-        # Try to load upcoming features from data/ folder
-        up_paths = [
-            "data/upcoming_features.csv",
-            "upcoming_features.csv"
-        ]
-        
-        df_up = None
-        for path in up_paths:
-            try:
-                df_up = pd.read_csv(path)
-                break
-            except FileNotFoundError:
-                continue
-        
-        if df_up is None:
-            return jsonify({
-                "error": "upcoming_features.csv not found",
-                "suggestion": "Run feature engineering to generate future race features"
-            }), 404
-        
-        mask = df_up["season"] == season if "season" in df_up.columns else pd.Series([True] * len(df_up))
-        
-        if not mask.any():
-            return jsonify({"error": "No upcoming races for that season"}), 404
-        
-        subset = df_up.loc[mask].copy()
-        
-        # Extract driver information
-        if "driver" in subset.columns:
-            drivers = subset["driver"].tolist()
-        else:
-            drivers = ["unknown"] * len(subset)
-        
-        # Use enhanced feature preparation
-        X = prepare_features_enhanced(subset, FEATURE_COLUMNS, ENCODERS_POST, CATEGORICAL_FEATURES, "post_qualifying")
-        
-        if include_confidence:
-            preds, confidence = get_prediction_confidence(fastest_model, X)
-        else:
-            preds = fastest_model.predict(X)
-            confidence = None
-        
-        rounds = subset["round"].tolist() if "round" in subset.columns else [1] * len(subset)
-        
-        predictions = []
-        for i, (r, d, p) in enumerate(zip(rounds, drivers, preds)):
-            entry = {
-                "round": int(r), 
-                "driver": d, 
-                "predicted": float(p)
-            }
-            if confidence is not None:
-                entry["confidence"] = float(confidence[i])
-            predictions.append(entry)
-        
-        return jsonify({
-            "season": season,
-            "predictions": predictions,
-            "model_type": "fastest_lap",
-            "uses_categorical": bool(CATEGORICAL_FEATURES)
-        })
-        
-    except Exception as e:
-        return jsonify({"error": f"Future fastest lap prediction failed: {str(e)}"}), 500
 
 @bp.route("/model_info")
 def get_model_info():
@@ -535,7 +439,6 @@ def get_model_info():
     try:
         info = {
             "models_loaded": {
-                "fastest_lap": fastest_model is not None,
                 "finish_position": finish_model is not None,
                 "pre_qualifying": finish_model_pre_qual is not None
             },
@@ -653,10 +556,10 @@ def health_check():
         status = {
             "status": "healthy",
             "models_loaded": {
-                "fastest_lap": fastest_model is not None,
                 "finish_position": finish_model is not None,
-                "pre_qualifying": finish_model_pre_qual is not None
-            },
+                "pre_qualifying": finish_model_pre_qual is not None,
+                "grid_position": grid_model is not None
+},
             "encoders_loaded": {
                 "pre_qualifying": bool(ENCODERS_PRE),
                 "post_qualifying": bool(ENCODERS_POST)
@@ -769,6 +672,309 @@ def get_available_races():
         
     except Exception as e:
         return jsonify({"error": f"Failed to load available races: {str(e)}"}), 500
+    
+@bp.route("/predict_grid_positions")
+def predict_grid_positions():
+    """Predict qualifying grid positions for a race"""
+    try:
+        season = request.args.get("season", type=int)
+        round_num = request.args.get("round", type=int)
+        include_confidence = request.args.get("confidence", "false").lower() == "true"
+        
+        if grid_model is None:
+            return jsonify({"error": "Grid position predictor not loaded"}), 404
+        
+        # Try to load upcoming features
+        up_paths = [
+            "data/upcoming_features.csv",
+            "upcoming_features.csv"
+        ]
+        
+        up = None
+        for path in up_paths:
+            try:
+                up = pd.read_csv(path)
+                break
+            except FileNotFoundError:
+                continue
+        
+        if up is None:
+            return jsonify({"error": "upcoming_features.csv not found"}), 404
+        
+        # Filter data
+        sub = up.copy()
+        if season is not None:
+            sub = sub[sub["season"] == season] if "season" in sub.columns else sub
+        if round_num is not None:
+            sub = sub[sub["round"] == round_num] if "round" in sub.columns else sub
+        
+        if sub.empty:
+            return jsonify({"error": f"No data for season {season}, round {round_num}"}), 404
+        
+        # Prepare features for grid prediction using the grid-specific encoders
+        X = prepare_features_enhanced(sub, GRID_FEATURES, GRID_ENCODERS, ['driver', 'circuitId', 'team'], "grid_prediction")
+        
+        if include_confidence:
+            grid_scores, confidence = get_prediction_confidence(grid_model, X)
+        else:
+            grid_scores = grid_model.predict(X)
+            confidence = None
+        
+        # Convert scores to grid positions (rank them)
+        order = np.argsort(grid_scores)
+        predicted_grid = np.empty_like(order, dtype=float)
+        predicted_grid[order] = np.arange(1, len(order) + 1)
+        
+        drivers = sub["driver"].tolist() if "driver" in sub.columns else ["unknown"] * len(sub)
+        
+        results = []
+        for i, (driver, pos, score) in enumerate(zip(drivers, predicted_grid, grid_scores)):
+            entry = {
+                "driver": driver,
+                "predicted_grid": float(pos),
+                "model_score": float(score)
+            }
+            if confidence is not None:
+                entry["confidence"] = float(confidence[i])
+            results.append(entry)
+        
+        # Sort by predicted grid position
+        results.sort(key=lambda x: x["predicted_grid"])
+        
+        return jsonify({
+            "season": season,
+            "round": round_num,
+            "grid_predictions": results,
+            "total_drivers": len(results),
+            "model_type": "grid_position"
+        })
+        
+    except Exception as e:
+        return jsonify({"error": f"Grid prediction failed: {str(e)}"}), 500
+
+@bp.route("/predict_race_with_predicted_grid")
+def predict_race_with_predicted_grid():
+    """Predict race results using predicted grid positions instead of actual ones"""
+    try:
+        season = request.args.get("season", type=int)
+        round_num = request.args.get("round", type=int)
+        include_confidence = request.args.get("confidence", "false").lower() == "true"
+        
+        if grid_model is None or finish_model is None:
+            return jsonify({"error": "Required models not loaded"}), 404
+        
+        # Load upcoming features
+        up_paths = [
+            "data/upcoming_features.csv",
+            "upcoming_features.csv"
+        ]
+        
+        up = None
+        for path in up_paths:
+            try:
+                up = pd.read_csv(path)
+                break
+            except FileNotFoundError:
+                continue
+        
+        if up is None:
+            return jsonify({"error": "upcoming_features.csv not found"}), 404
+        
+        # Filter data
+        sub = up.copy()
+        if season is not None:
+            sub = sub[sub["season"] == season] if "season" in sub.columns else sub
+        if round_num is not None:
+            sub = sub[sub["round"] == round_num] if "round" in sub.columns else sub
+        
+        if sub.empty:
+            return jsonify({"error": f"No data for season {season}, round {round_num}"}), 404
+        
+        # Step 1: Predict grid positions
+        X_grid = prepare_features_enhanced(sub, GRID_FEATURES, GRID_ENCODERS, ['driver', 'circuitId', 'team'], "grid_prediction")
+        grid_scores = grid_model.predict(X_grid)
+        
+        # Convert to grid positions
+        order = np.argsort(grid_scores)
+        predicted_grid = np.empty_like(order, dtype=float)
+        predicted_grid[order] = np.arange(1, len(order) + 1)
+        
+        # Step 2: Use predicted grid positions for race prediction
+        sub_with_predicted_grid = sub.copy()
+        sub_with_predicted_grid['grid_position'] = predicted_grid
+        
+        # Create mock qualifying data based on grid position
+        sub_with_predicted_grid['made_Q3'] = (predicted_grid <= 10).astype(int)
+        sub_with_predicted_grid['made_Q2'] = (predicted_grid <= 15).astype(int)
+        
+        # Create mock qualifying times based on grid position (for ratio calculations)
+        # Better grid positions get faster times
+        base_time = 90.0  # Base qualifying time in seconds
+        sub_with_predicted_grid['Q1'] = base_time + predicted_grid * 0.5
+        sub_with_predicted_grid['Q2'] = np.where(
+            predicted_grid <= 15, 
+            base_time + predicted_grid * 0.4, 
+            np.nan
+        )
+        sub_with_predicted_grid['Q3'] = np.where(
+            predicted_grid <= 10, 
+            base_time + predicted_grid * 0.3, 
+            np.nan
+        )
+        
+        # Calculate Q1_Q2_ratio and Q2_Q3_ratio if they're expected features
+        if 'Q1_Q2_ratio' in FEATURE_COLUMNS:
+            sub_with_predicted_grid['Q1_Q2_ratio'] = np.where(
+                sub_with_predicted_grid['Q2'].notna(),
+                sub_with_predicted_grid['Q1'] / sub_with_predicted_grid['Q2'],
+                1.0
+            )
+        
+        if 'Q2_Q3_ratio' in FEATURE_COLUMNS:
+            sub_with_predicted_grid['Q2_Q3_ratio'] = np.where(
+                sub_with_predicted_grid['Q3'].notna(),
+                sub_with_predicted_grid['Q2'] / sub_with_predicted_grid['Q3'],
+                1.0
+            )
+        
+        # Prepare features for race prediction
+        X_race = prepare_features_enhanced(
+            sub_with_predicted_grid, 
+            FEATURE_COLUMNS, 
+            ENCODERS_POST, 
+            CATEGORICAL_FEATURES, 
+            "post_qualifying"
+        )
+        
+        if include_confidence:
+            race_scores, race_confidence = get_prediction_confidence(finish_model, X_race)
+        else:
+            race_scores = finish_model.predict(X_race)
+            race_confidence = None
+        
+        # Convert to race positions
+        race_order = np.argsort(race_scores)
+        predicted_race = np.empty_like(race_order, dtype=float)
+        predicted_race[race_order] = np.arange(1, len(race_order) + 1)
+        
+        drivers = sub["driver"].tolist() if "driver" in sub.columns else ["unknown"] * len(sub)
+        
+        results = []
+        for i, driver in enumerate(drivers):
+            entry = {
+                "driver": driver,
+                "predicted_grid": float(predicted_grid[i]),
+                "predicted_finish": float(predicted_race[i]),
+                "grid_model_score": float(grid_scores[i]),
+                "race_model_score": float(race_scores[i])
+            }
+            if race_confidence is not None:
+                entry["race_confidence"] = float(race_confidence[i])
+            results.append(entry)
+        
+        # Sort by predicted finish position
+        results.sort(key=lambda x: x["predicted_finish"])
+        
+        return jsonify({
+            "season": season,
+            "round": round_num,
+            "predictions": results,
+            "total_drivers": len(results),
+            "model_type": "two_stage_prediction",
+            "description": "Uses predicted grid positions for race prediction"
+        })
+        
+    except Exception as e:
+        return jsonify({"error": f"Two-stage prediction failed: {str(e)}"}), 500
+
+@bp.route("/compare_grid_predictions")
+def compare_grid_predictions():
+    """Compare predicted vs actual grid positions for completed races"""
+    try:
+        season = request.args.get("season", type=int)
+        round_num = request.args.get("round", type=int)
+        
+        if grid_model is None:
+            return jsonify({"error": "Grid position predictor not loaded"}), 404
+        
+        # Load historical features (has actual grid positions)
+        data_paths = [
+            "data/predictor_features.csv",
+            "predictor_features.csv"
+        ]
+        
+        feats = None
+        for path in data_paths:
+            try:
+                feats = pd.read_csv(path)
+                break
+            except FileNotFoundError:
+                continue
+        
+        if feats is None:
+            return jsonify({"error": "predictor_features.csv not found"}), 404
+        
+        # Filter for specific race
+        sub = feats.loc[(feats["season"] == season) & (feats["round"] == round_num)]
+        
+        if sub.empty:
+            return jsonify({"error": f"No data for season {season}, round {round_num}"}), 404
+        
+        # Prepare features for grid prediction (exclude actual grid data)
+        X_grid = prepare_features_enhanced(sub, GRID_FEATURES, GRID_ENCODERS, ['driver', 'circuitId', 'team'], "grid_prediction")
+        predicted_grid_scores = grid_model.predict(X_grid)
+        
+        # Convert to grid positions
+        order = np.argsort(predicted_grid_scores)
+        predicted_grid = np.empty_like(order, dtype=float)
+        predicted_grid[order] = np.arange(1, len(order) + 1)
+        
+        drivers = sub["driver"].tolist() if "driver" in sub.columns else ["unknown"] * len(sub)
+        actual_grid = sub["grid_position"].tolist() if "grid_position" in sub.columns else [None] * len(sub)
+        
+        results = []
+        for i, driver in enumerate(drivers):
+            entry = {
+                "driver": driver,
+                "predicted_grid": float(predicted_grid[i]),
+                "actual_grid": float(actual_grid[i]) if actual_grid[i] is not None else None,
+                "grid_difference": float(predicted_grid[i] - actual_grid[i]) if actual_grid[i] is not None else None,
+                "model_score": float(predicted_grid_scores[i])
+            }
+            results.append(entry)
+        
+        # Sort by actual grid position
+        results.sort(key=lambda x: x["actual_grid"] if x["actual_grid"] is not None else 999)
+        
+        # Calculate accuracy metrics
+        if all(r["actual_grid"] is not None for r in results):
+            predicted = [r["predicted_grid"] for r in results]
+            actual = [r["actual_grid"] for r in results]
+            
+            mae = np.mean([abs(p - a) for p, a in zip(predicted, actual)])
+            rmse = np.sqrt(np.mean([(p - a)**2 for p, a in zip(predicted, actual)]))
+            
+            # Spearman correlation
+            from scipy.stats import spearmanr
+            spearman_corr, _ = spearmanr(predicted, actual)
+        else:
+            mae = rmse = spearman_corr = None
+        
+        return jsonify({
+            "season": season,
+            "round": round_num,
+            "grid_comparison": results,
+            "total_drivers": len(results),
+            "accuracy_metrics": {
+                "mae": mae,
+                "rmse": rmse,
+                "spearman_correlation": spearman_corr
+            },
+            "model_type": "grid_position_comparison"
+        })
+        
+    except Exception as e:
+        return jsonify({"error": f"Grid comparison failed: {str(e)}"}), 500
 
 # Initialize models on import
 try:

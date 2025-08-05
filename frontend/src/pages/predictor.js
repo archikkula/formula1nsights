@@ -1,11 +1,12 @@
 import React, { useState, useEffect } from 'react';
 
+
 const API_BASE = 'http://localhost:5001'; // Adjust if needed
 
 export default function Predictor() {
   const [upcomingPredictions, setUpcomingPredictions] = useState([]);
   const [historicalPredictions, setHistoricalPredictions] = useState([]);
-  
+  const [fastestLapPredictions, setFastestLapPredictions] = useState([]);
   const [availableRaces, setAvailableRaces] = useState({});
   const [availableSeasons, setAvailableSeasons] = useState([]);
   const [selectedYear, setSelectedYear] = useState('');
@@ -14,7 +15,7 @@ export default function Predictor() {
   const [upcomingLoading, setUpcomingLoading] = useState(true);
   const [racesLoading, setRacesLoading] = useState(true);
   const [error, setError] = useState('');
-  const [viewMode] = useState('finish'); // 'finish' or 'fastest'
+  const [viewMode, setViewMode] = useState('finish'); // 'finish' or 'fastest'
 
   // Load available races from CSV data on component mount
   useEffect(() => {
@@ -91,30 +92,47 @@ export default function Predictor() {
   // Reset selected race when year changes
   useEffect(() => {
     setSelectedRace('');
-      setHistoricalPredictions([]);
-      
+    setHistoricalPredictions([]);
+    setFastestLapPredictions([]);
   }, [selectedYear]);
 
   const loadUpcomingPredictions = async () => {
     try {
       setUpcomingLoading(true);
-      const response = await fetch(`${API_BASE}/predict_finish_pos_future?season=2025&confidence=true`);
       
-      if (!response.ok) {
-        throw new Error(`HTTP ${response.status}`);
+      // First, get all 2025 predictions to find the next round
+      const allRoundsResponse = await fetch(`${API_BASE}/predict_race_with_predicted_grid?season=2025&confidence=false`);
+      
+      if (!allRoundsResponse.ok) {
+        throw new Error(`HTTP ${allRoundsResponse.status}`);
       }
       
-      const data = await response.json();
+      const allData = await allRoundsResponse.json();
       
-      if (data.predictions && data.predictions.length > 0) {
-        // Group by round and get the next upcoming race
-        const rounds = [...new Set(data.predictions.map(p => p.round))].sort((a, b) => a - b);
-        const nextRound = rounds[0]; // Get the first/next round
-        const nextRacePredictions = data.predictions
-          .filter(p => p.round === nextRound)
-          .sort((a, b) => a.predicted - b.predicted);
+      if (allData.predictions && allData.predictions.length > 0) {
+        // Find the next upcoming round (lowest round number)
+        const rounds = [...new Set(allData.predictions.map(p => p.round))].sort((a, b) => a - b);
+        const nextRound = rounds[0];
         
-        setUpcomingPredictions(nextRacePredictions);
+        // Now get predictions for just that specific round
+        const nextRoundResponse = await fetch(
+          `${API_BASE}/predict_race_with_predicted_grid?season=2025&round=${nextRound}&confidence=false`
+        );
+        
+        if (nextRoundResponse.ok) {
+          const nextRoundData = await nextRoundResponse.json();
+          const nextRacePredictions = (nextRoundData.predictions || [])
+            .sort((a, b) => a.predicted_finish - b.predicted_finish);
+          
+          setUpcomingPredictions(nextRacePredictions);
+        } else {
+          // Fallback to first round from all data
+          const nextRacePredictions = allData.predictions
+            .filter(p => p.round === nextRound)
+            .sort((a, b) => a.predicted_finish - b.predicted_finish);
+          
+          setUpcomingPredictions(nextRacePredictions);
+        }
       } else {
         setUpcomingPredictions([]);
       }
@@ -141,29 +159,80 @@ export default function Predictor() {
         throw new Error('Race not found');
       }
 
-      // Load finish position predictions
+      // Load THREE types of predictions for completed races:
+      // 1. Post-qualifying predictions (using actual grid)
+      // 2. Two-stage predictions (predicted grid → race)
+      // 3. Grid position predictions vs actual
+
+      // 1. Post-qualifying predictions (original)
       const finishResponse = await fetch(
-        `${API_BASE}/predict_finish_pos_round?season=${selectedYear}&round=${raceData.round}&confidence=true`
+        `${API_BASE}/predict_finish_pos_round?season=${selectedYear}&round=${raceData.round}&confidence=false`
       );
       
+      let postQualPredictions = [];
       if (finishResponse.ok) {
         const finishData = await finishResponse.json();
-        setHistoricalPredictions(finishData.predictions || []);
-      } else {
-        setHistoricalPredictions([]);
+        postQualPredictions = finishData.predictions || [];
       }
 
-     
+      // 2. Two-stage predictions (grid → race)
+      const twoStageResponse = await fetch(
+        `${API_BASE}/predict_race_with_predicted_grid?season=${selectedYear}&round=${raceData.round}&confidence=false`
+      );
       
+      let twoStagePredictions = [];
+      if (twoStageResponse.ok) {
+        const twoStageData = await twoStageResponse.json();
+        twoStagePredictions = twoStageData.predictions || [];
+      }
+
+      // 3. Grid comparison
+      const gridComparisonResponse = await fetch(
+        `${API_BASE}/compare_grid_predictions?season=${selectedYear}&round=${raceData.round}`
+      );
+      
+      let gridComparison = [];
+      if (gridComparisonResponse.ok) {
+        const gridData = await gridComparisonResponse.json();
+        gridComparison = gridData.grid_comparison || [];
+      }
+
+      // Combine all data for display
+      const combinedData = postQualPredictions.map(postQual => {
+        const twoStage = twoStagePredictions.find(ts => ts.driver === postQual.driver);
+        const gridComp = gridComparison.find(gc => gc.driver === postQual.driver);
+        
+        return {
+          ...postQual,
+          two_stage_predicted: twoStage?.predicted_finish || null,
+          predicted_grid: gridComp?.predicted_grid || null,
+          actual_grid: gridComp?.actual_grid || null
+        };
+      });
+
+      setHistoricalPredictions(combinedData);
+
+      // Load fastest lap predictions
+      const fastestResponse = await fetch(
+        `${API_BASE}/predict_fastest_lap_round?season=${selectedYear}&round=${raceData.round}&confidence=false`
+      );
+      
+      if (fastestResponse.ok) {
+        const fastestData = await fastestResponse.json();
+        setFastestLapPredictions(fastestData.predictions || []);
+      } else {
+        setFastestLapPredictions([]);
+      }
+
     } catch (err) {
       console.error('Error loading historical predictions:', err);
       setError(`Failed to load predictions: ${err.message}`);
       setHistoricalPredictions([]);
-      
+      setFastestLapPredictions([]);
     } finally {
       setLoading(false);
     }
-  }, [selectedRace, selectedYear, availableRaces]);
+  }, [selectedRace, selectedYear, availableRaces]); // Removed historicalPredictions dependency
 
   // Load historical predictions when race is selected
   useEffect(() => {
@@ -178,7 +247,13 @@ export default function Predictor() {
     return 'text-f1-white';
   };
 
-  
+  const formatTime = (seconds) => {
+    if (!seconds) return 'N/A';
+    const minutes = Math.floor(seconds / 60);
+    const secs = (seconds % 60).toFixed(3);
+    return `${minutes}:${secs.padStart(6, '0')}`;
+  };
+
   const getUpcomingRaceName = () => {
     if (upcomingPredictions.length > 0) {
       const round = upcomingPredictions[0].round;
@@ -189,7 +264,6 @@ export default function Predictor() {
     return 'Next Race';
   };
 
-  
   return (
     <div className="max-w-6xl mx-auto p-6">
       <h2 className="text-4xl font-f1-bold text-f1-red mb-8">Race Predictions</h2>
@@ -212,21 +286,21 @@ export default function Predictor() {
                   <tr>
                     <th className="px-4 py-3 text-left font-f1-bold">Position</th>
                     <th className="px-4 py-3 text-left font-f1-bold">Driver</th>
+                    <th className="px-4 py-3 text-left font-f1-bold">Pred. Grid</th>
                     <th className="px-4 py-3 text-left font-f1-bold">Score</th>
-                    <th className="px-4 py-3 text-left font-f1-bold">Confidence</th>
                   </tr>
                 </thead>
                 <tbody>
                   {upcomingPredictions.map((pred, idx) => (
                     <tr key={idx} className="border-b border-gray-700 hover:bg-gray-700">
-                      <td className={`px-4 py-3 font-f1-bold text-lg ${getPositionColor(pred.predicted)}`}>
-                        P{Math.round(pred.predicted)}
+                      <td className={`px-4 py-3 font-f1-bold text-lg ${getPositionColor(pred.predicted_finish)}`}>
+                        P{Math.round(pred.predicted_finish)}
                       </td>
                       <td className="px-4 py-3 font-f1-primary text-f1-white">{pred.driver}</td>
-                      <td className="px-4 py-3 text-gray-300">{pred.model_score?.toFixed(3)}</td>
-                      <td className="px-4 py-3 text-gray-300">
-                        {pred.confidence ? `±${pred.confidence.toFixed(2)}` : 'N/A'}
+                      <td className={`px-4 py-3 font-f1-bold ${getPositionColor(pred.predicted_grid)}`}>
+                        P{Math.round(pred.predicted_grid)}
                       </td>
+                      <td className="px-4 py-3 text-gray-300">{pred.race_model_score?.toFixed(3)}</td>
                     </tr>
                   ))}
                 </tbody>
@@ -284,6 +358,35 @@ export default function Predictor() {
               ))}
             </select>
           </div>
+
+          {/* View Mode Toggle */}
+          {selectedRace && historicalPredictions.length > 0 && (
+            <div>
+              <label className="block text-sm font-f1-primary text-gray-300 mb-2">Prediction Type</label>
+              <div className="flex bg-gray-800 rounded border border-gray-600 overflow-hidden">
+                <button
+                  onClick={() => setViewMode('finish')}
+                  className={`px-4 py-2 font-f1-primary transition-colors ${
+                    viewMode === 'finish' 
+                      ? 'bg-f1-red text-f1-white' 
+                      : 'text-gray-300 hover:text-f1-white'
+                  }`}
+                >
+                  Finish Position
+                </button>
+                <button
+                  onClick={() => setViewMode('fastest')}
+                  className={`px-4 py-2 font-f1-primary transition-colors ${
+                    viewMode === 'fastest' 
+                      ? 'bg-f1-red text-f1-white' 
+                      : 'text-gray-300 hover:text-f1-white'
+                  }`}
+                >
+                  Fastest Lap
+                </button>
+              </div>
+            </div>
+          )}
         </div>
 
         {/* Loading State */}
@@ -306,36 +409,82 @@ export default function Predictor() {
             {viewMode === 'finish' && historicalPredictions.length > 0 && (
               <div className="overflow-x-auto">
                 <div className="bg-f1-red px-4 py-2">
-                  <h4 className="font-f1-bold text-f1-white">Finish Position Predictions</h4>
+                  <h4 className="font-f1-bold text-f1-white">Race Prediction Comparison</h4>
+                  <p className="text-sm text-f1-white opacity-90">Post-Qualifying vs Two-Stage (Grid→Race) Predictions</p>
                 </div>
                 <table className="w-full">
                   <thead className="bg-gray-700">
                     <tr>
-                      <th className="px-4 py-3 text-left font-f1-primary">Predicted</th>
-                      <th className="px-4 py-3 text-left font-f1-primary">Driver</th>
-                      <th className="px-4 py-3 text-left font-f1-primary">Actual</th>
-                      <th className="px-4 py-3 text-left font-f1-primary">Score</th>
-                      <th className="px-4 py-3 text-left font-f1-primary">Confidence</th>
+                      <th className="px-3 py-3 text-left font-f1-primary text-sm">Driver</th>
+                      <th className="px-3 py-3 text-left font-f1-primary text-sm">Post-Qual</th>
+                      <th className="px-3 py-3 text-left font-f1-primary text-sm">Two-Stage</th>
+                      <th className="px-3 py-3 text-left font-f1-primary text-sm">Actual</th>
+                      <th className="px-3 py-3 text-left font-f1-primary text-sm">Pred Grid</th>
+                      <th className="px-3 py-3 text-left font-f1-primary text-sm">Actual Grid</th>
                     </tr>
                   </thead>
                   <tbody>
                     {historicalPredictions.map((pred, idx) => (
                       <tr key={idx} className="border-b border-gray-700 hover:bg-gray-700">
-                        <td className={`px-4 py-3 font-f1-bold ${getPositionColor(pred.predicted)}`}>
+                        <td className="px-3 py-3 font-f1-primary text-f1-white text-sm">{pred.driver}</td>
+                        <td className={`px-3 py-3 font-f1-bold text-sm ${getPositionColor(pred.predicted)}`}>
                           P{Math.round(pred.predicted)}
                         </td>
-                        <td className="px-4 py-3 font-f1-primary text-f1-white">{pred.driver}</td>
-                        <td className={`px-4 py-3 font-f1-bold ${pred.actual ? getPositionColor(pred.actual) : 'text-gray-500'}`}>
+                        <td className={`px-3 py-3 font-f1-bold text-sm ${pred.two_stage_predicted ? getPositionColor(pred.two_stage_predicted) : 'text-gray-500'}`}>
+                          {pred.two_stage_predicted ? `P${Math.round(pred.two_stage_predicted)}` : 'N/A'}
+                        </td>
+                        <td className={`px-3 py-3 font-f1-bold text-sm ${pred.actual ? getPositionColor(pred.actual) : 'text-gray-500'}`}>
                           {pred.actual ? `P${Math.round(pred.actual)}` : 'N/A'}
                         </td>
-                        <td className="px-4 py-3 text-gray-300">{pred.model_score?.toFixed(3)}</td>
-                        <td className="px-4 py-3 text-gray-300">
-                          {pred.confidence ? `±${pred.confidence.toFixed(2)}` : 'N/A'}
+                        <td className={`px-3 py-3 font-f1-bold text-sm ${pred.predicted_grid ? getPositionColor(pred.predicted_grid) : 'text-gray-500'}`}>
+                          {pred.predicted_grid ? `P${Math.round(pred.predicted_grid)}` : 'N/A'}
+                        </td>
+                        <td className={`px-3 py-3 font-f1-bold text-sm ${pred.actual_grid ? getPositionColor(pred.actual_grid) : 'text-gray-500'}`}>
+                          {pred.actual_grid ? `P${Math.round(pred.actual_grid)}` : 'N/A'}
                         </td>
                       </tr>
                     ))}
                   </tbody>
                 </table>
+                <div className="bg-gray-700 px-4 py-2 text-xs text-gray-300">
+                  <p><strong>Post-Qual:</strong> Uses actual qualifying results | <strong>Two-Stage:</strong> Predicts grid first, then race result</p>
+                </div>
+              </div>
+            )}
+
+            {viewMode === 'fastest' && fastestLapPredictions.length > 0 && (
+              <div className="overflow-x-auto">
+                <div className="bg-f1-red px-4 py-2">
+                  <h4 className="font-f1-bold text-f1-white">Fastest Lap Predictions</h4>
+                </div>
+                <table className="w-full">
+                  <thead className="bg-gray-700">
+                    <tr>
+                      <th className="px-4 py-3 text-left font-f1-primary">Driver</th>
+                      <th className="px-4 py-3 text-left font-f1-primary">Predicted Time</th>
+                      <th className="px-4 py-3 text-left font-f1-primary">Actual Time</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {fastestLapPredictions
+                      .sort((a, b) => a.predicted - b.predicted)
+                      .map((pred, idx) => (
+                      <tr key={idx} className="border-b border-gray-700 hover:bg-gray-700">
+                        <td className="px-4 py-3 font-f1-primary text-f1-white">{pred.driver}</td>
+                        <td className="px-4 py-3 font-mono text-green-400">{formatTime(pred.predicted)}</td>
+                        <td className="px-4 py-3 font-mono text-gray-300">
+                          {pred.actual ? formatTime(pred.actual) : 'N/A'}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+
+            {!loading && selectedRace && historicalPredictions.length === 0 && fastestLapPredictions.length === 0 && (
+              <div className="p-6 text-center text-gray-400">
+                No predictions available for this race
               </div>
             )}
           </div>

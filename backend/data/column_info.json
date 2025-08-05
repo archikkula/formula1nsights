@@ -91,7 +91,6 @@
     "driver_zhou"
   ],
   "target_columns": [
-    "fastest_lap",
     "finish_pos"
   ],
   "metadata_columns": [

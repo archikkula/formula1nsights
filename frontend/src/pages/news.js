@@ -1,8 +1,6 @@
-// frontend/src/pages/Home.js
-
 import React, { useState, useEffect } from 'react';
 
-export default function Home() {
+export default function News() {
   const [news, setNews] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);

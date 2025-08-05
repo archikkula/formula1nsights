@@ -759,6 +759,7 @@ def predict_race_with_predicted_grid():
         season = request.args.get("season", type=int)
         round_num = request.args.get("round", type=int)
         include_confidence = request.args.get("confidence", "false").lower() == "true"
+        next_only = request.args.get("next_only", "false").lower() == "true"  # NEW PARAMETER
         
         if grid_model is None or finish_model is None:
             return jsonify({"error": "Required models not loaded"}), 404
@@ -784,11 +785,22 @@ def predict_race_with_predicted_grid():
         sub = up.copy()
         if season is not None:
             sub = sub[sub["season"] == season] if "season" in sub.columns else sub
-        if round_num is not None:
-            sub = sub[sub["round"] == round_num] if "round" in sub.columns else sub
         
         if sub.empty:
-            return jsonify({"error": f"No data for season {season}, round {round_num}"}), 404
+            return jsonify({"error": f"No data for season {season}"}), 404
+        
+        # NEW LOGIC: Handle next_only parameter
+        if next_only:
+            # Get only the next race (minimum round number)
+            next_round = sub["round"].min() if "round" in sub.columns else 1
+            sub = sub[sub["round"] == next_round]
+        elif round_num is not None:
+            # Specific round requested
+            sub = sub[sub["round"] == round_num] if "round" in sub.columns else sub
+        # If neither next_only nor round_num specified, return all rounds (existing behavior)
+        
+        if sub.empty:
+            return jsonify({"error": f"No data for specified parameters"}), 404
         
         # Step 1: Predict grid positions
         X_grid = prepare_features_enhanced(sub, GRID_FEATURES, GRID_ENCODERS, ['driver', 'circuitId', 'team'], "grid_prediction")
@@ -808,8 +820,7 @@ def predict_race_with_predicted_grid():
         sub_with_predicted_grid['made_Q2'] = (predicted_grid <= 15).astype(int)
         
         # Create mock qualifying times based on grid position (for ratio calculations)
-        # Better grid positions get faster times
-        base_time = 90.0  # Base qualifying time in seconds
+        base_time = 90.0
         sub_with_predicted_grid['Q1'] = base_time + predicted_grid * 0.5
         sub_with_predicted_grid['Q2'] = np.where(
             predicted_grid <= 15, 
@@ -868,6 +879,11 @@ def predict_race_with_predicted_grid():
                 "grid_model_score": float(grid_scores[i]),
                 "race_model_score": float(race_scores[i])
             }
+            
+            # Add round info if available
+            if "round" in sub.columns:
+                entry["round"] = int(sub.iloc[i]["round"])
+            
             if race_confidence is not None:
                 entry["race_confidence"] = float(race_confidence[i])
             results.append(entry)
@@ -875,14 +891,24 @@ def predict_race_with_predicted_grid():
         # Sort by predicted finish position
         results.sort(key=lambda x: x["predicted_finish"])
         
-        return jsonify({
+        response_data = {
             "season": season,
-            "round": round_num,
             "predictions": results,
             "total_drivers": len(results),
-            "model_type": "two_stage_prediction",
-            "description": "Uses predicted grid positions for race prediction"
-        })
+            "model_type": "two_stage_prediction"
+        }
+        
+        # Add round info if filtering by specific round or next_only
+        if next_only and "round" in sub.columns:
+            response_data["round"] = int(sub["round"].iloc[0])
+            response_data["description"] = "Next race only"
+        elif round_num is not None:
+            response_data["round"] = round_num
+            response_data["description"] = f"Round {round_num} specific"
+        else:
+            response_data["description"] = "All available rounds"
+        
+        return jsonify(response_data)
         
     except Exception as e:
         return jsonify({"error": f"Two-stage prediction failed: {str(e)}"}), 500
@@ -975,8 +1001,267 @@ def compare_grid_predictions():
         
     except Exception as e:
         return jsonify({"error": f"Grid comparison failed: {str(e)}"}), 500
-
-# Initialize models on import
+    
+@bp.route("/predict_historical_race_two_stage")
+def predict_historical_race_two_stage():
+    """Predict historical race using two-stage model - TRULY LEAK-FREE"""
+    try:
+        season = request.args.get("season", type=int)
+        round_num = request.args.get("round", type=int)
+        include_confidence = request.args.get("confidence", "false").lower() == "true"
+        
+        if grid_model is None or finish_model is None:
+            return jsonify({"error": "Required models not loaded"}), 404
+        
+        # Load historical features
+        data_paths = [
+            "data/predictor_features.csv",
+            "predictor_features.csv"
+        ]
+        
+        feats = None
+        for path in data_paths:
+            try:
+                feats = pd.read_csv(path)
+                break
+            except FileNotFoundError:
+                continue
+        
+        if feats is None:
+            return jsonify({"error": "predictor_features.csv not found"}), 404
+        
+        # Get the target race
+        target_race = feats[(feats["season"] == season) & (feats["round"] == round_num)].copy()
+        
+        if target_race.empty:
+            return jsonify({"error": f"No data for season {season}, round {round_num}"}), 404
+        
+        # CRITICAL: Use chronological filtering - only races that happened BEFORE this race
+        # Filter by (season, round) combination to ensure chronological order
+        historical_data = feats[
+            (feats['season'] < season) | 
+            ((feats['season'] == season) & (feats['round'] < round_num))
+        ].copy()
+        
+        print(f"🔍 Target race: Season {season}, Round {round_num}")
+        print(f"📊 Historical data: {len(historical_data)} races before this race")
+        
+        if historical_data.empty:
+            return jsonify({
+                "error": "No historical data available before this race",
+                "suggestion": "Try a later race in the season or a later season"
+            }), 404
+        
+        # Calculate truly leak-free features for each driver
+        clean_features = []
+        
+        for _, driver_row in target_race.iterrows():
+            driver = driver_row['driver']
+            circuit_id = driver_row['circuitId']
+            team = driver_row['team']
+            
+            # Get driver's complete history BEFORE this race
+            driver_history = historical_data[historical_data['driver'] == driver].copy()
+            team_history = historical_data[historical_data['team'] == team].copy()
+            circuit_history = historical_data[historical_data['circuitId'] == circuit_id].copy()
+            
+            # Driver's circuit-specific history
+            driver_circuit_history = driver_history[driver_history['circuitId'] == circuit_id].copy()
+            
+            # Current season history (races before this round only)
+            current_season_history = driver_history[driver_history['season'] == season].copy()
+            
+            print(f"👤 {driver}: {len(driver_history)} total races, {len(current_season_history)} this season, {len(driver_circuit_history)} at this circuit")
+            
+            # Calculate leak-free features using only historical data
+            clean_row = {
+                'driver': driver,
+                'team': team,
+                'circuitId': circuit_id,
+                'season': season,
+                'round': round_num,
+                
+                # Static circuit characteristics (no leak possible)
+                'length_km': driver_row['length_km'],
+                'corners': driver_row['corners'],
+                'laps': driver_row['laps'],
+                'avg_temp': driver_row['avg_temp'],
+                'precip_mm': driver_row['precip_mm'],
+                
+                # Career statistics (before this race)
+                'leak_proof_career_mean': driver_history['finish_pos'].mean() if len(driver_history) > 0 else 11.0,
+                'leak_proof_career_podium': (driver_history['finish_pos'] <= 3).mean() if len(driver_history) > 0 else 0.05,
+                
+                # Recent form (last few races)
+                'leak_proof_last3_fin': driver_history.tail(3)['finish_pos'].mean() if len(driver_history) >= 3 else 11.0,
+                'leak_proof_recent_form': driver_history.tail(5)['finish_pos'].mean() if len(driver_history) >= 5 else 11.0,
+                
+                # Performance consistency
+                'leak_proof_consistency': driver_history['finish_pos'].std() if len(driver_history) > 1 else 6.0,
+                'leak_proof_peak_performance': driver_history['finish_pos'].min() if len(driver_history) > 0 else 20.0,
+                
+                # Points scoring rate
+                'leak_proof_points_rate': (driver_history['finish_pos'] <= 10).mean() if len(driver_history) > 0 else 0.3,
+                
+                # Team performance (before this race)
+                'leak_proof_team_mean': team_history['finish_pos'].mean() if len(team_history) > 0 else 11.0,
+                'leak_proof_team_podium_rate': (team_history['finish_pos'] <= 3).mean() if len(team_history) > 0 else 0.1,
+                
+                # Current season performance (races completed before this one)
+                'leak_proof_current_mean': current_season_history['finish_pos'].mean() if len(current_season_history) > 0 else 11.0,
+                'leak_proof_current_podium_rate': (current_season_history['finish_pos'] <= 3).mean() if len(current_season_history) > 0 else 0.05,
+                'leak_proof_current_wins_rate': (current_season_history['finish_pos'] == 1).mean() if len(current_season_history) > 0 else 0.02,
+                
+                # Weighted recent performance (more weight to recent races)
+                'leak_proof_weighted_mean': 11.0,
+                'leak_proof_weighted_podium_rate': 0.05,
+                
+                # Circuit-specific performance
+                'leak_proof_circuit_mean_norm': 0.0,
+                'leak_proof_circuit_podium_norm': 0.0
+            }
+            
+            # Calculate weighted recent performance (last 10 races with exponential decay)
+            if len(driver_history) > 0:
+                recent_races = driver_history.tail(10).copy()
+                if len(recent_races) > 0:
+                    # Create exponential weights (more recent = higher weight)
+                    weights = np.exp(np.linspace(-1, 0, len(recent_races)))
+                    weights = weights / weights.sum()
+                    
+                    clean_row['leak_proof_weighted_mean'] = np.average(recent_races['finish_pos'], weights=weights)
+                    clean_row['leak_proof_weighted_podium_rate'] = np.average((recent_races['finish_pos'] <= 3).astype(float), weights=weights)
+            
+            # Circuit-specific performance normalization
+            if len(driver_circuit_history) > 0 and len(circuit_history) > 0:
+                driver_circuit_avg = driver_circuit_history['finish_pos'].mean()
+                circuit_avg = circuit_history['finish_pos'].mean()
+                
+                # Normalize driver's circuit performance relative to overall circuit difficulty
+                clean_row['leak_proof_circuit_mean_norm'] = driver_circuit_avg - circuit_avg
+                clean_row['leak_proof_circuit_podium_norm'] = (driver_circuit_history['finish_pos'] <= 3).mean()
+            
+            clean_features.append(clean_row)
+        
+        # Convert to DataFrame and remove qualifying data
+        sub_clean = pd.DataFrame(clean_features)
+        
+        print(f"✅ Created leak-free features for {len(sub_clean)} drivers")
+        
+        # Step 1: Predict grid positions using clean features
+        X_grid = prepare_features_enhanced(
+            sub_clean, 
+            GRID_FEATURES, 
+            GRID_ENCODERS, 
+            ['driver', 'circuitId', 'team'], 
+            "grid_prediction"
+        )
+        grid_scores = grid_model.predict(X_grid)
+        
+        # Convert to grid positions
+        order = np.argsort(grid_scores)
+        predicted_grid = np.empty_like(order, dtype=float)
+        predicted_grid[order] = np.arange(1, len(order) + 1)
+        
+        # Step 2: Use predicted grid for race prediction
+        sub_with_predicted_grid = sub_clean.copy()
+        sub_with_predicted_grid['grid_position'] = predicted_grid
+        sub_with_predicted_grid['made_Q3'] = (predicted_grid <= 10).astype(int)
+        sub_with_predicted_grid['made_Q2'] = (predicted_grid <= 15).astype(int)
+        
+        # Create mock qualifying times based on predicted grid
+        base_time = 90.0
+        sub_with_predicted_grid['Q1'] = base_time + predicted_grid * 0.5
+        sub_with_predicted_grid['Q2'] = np.where(
+            predicted_grid <= 15, 
+            base_time + predicted_grid * 0.4, 
+            np.nan
+        )
+        sub_with_predicted_grid['Q3'] = np.where(
+            predicted_grid <= 10, 
+            base_time + predicted_grid * 0.3, 
+            np.nan
+        )
+        
+        # Calculate timing ratios if needed
+        if 'Q1_Q2_ratio' in FEATURE_COLUMNS:
+            sub_with_predicted_grid['Q1_Q2_ratio'] = np.where(
+                sub_with_predicted_grid['Q2'].notna(),
+                sub_with_predicted_grid['Q1'] / sub_with_predicted_grid['Q2'],
+                1.0
+            )
+        
+        if 'Q2_Q3_ratio' in FEATURE_COLUMNS:
+            sub_with_predicted_grid['Q2_Q3_ratio'] = np.where(
+                sub_with_predicted_grid['Q3'].notna(),
+                sub_with_predicted_grid['Q2'] / sub_with_predicted_grid['Q3'],
+                1.0
+            )
+        
+        # Step 3: Predict race results using clean features + predicted grid
+        X_race = prepare_features_enhanced(
+            sub_with_predicted_grid, 
+            FEATURE_COLUMNS, 
+            ENCODERS_POST, 
+            CATEGORICAL_FEATURES, 
+            "post_qualifying"
+        )
+        
+        if include_confidence:
+            race_scores, race_confidence = get_prediction_confidence(finish_model, X_race)
+        else:
+            race_scores = finish_model.predict(X_race)
+            race_confidence = None
+        
+        # Convert to race positions
+        race_order = np.argsort(race_scores)
+        predicted_race = np.empty_like(race_order, dtype=float)
+        predicted_race[race_order] = np.arange(1, len(race_order) + 1)
+        
+        # Get actual results for comparison
+        actual_finish = target_race["finish_pos"].tolist()
+        actual_grid = target_race["grid_position"].tolist()
+        
+        results = []
+        for i, driver in enumerate(sub_clean['driver']):
+            # Get historical context for this driver
+            driver_hist_count = len(historical_data[historical_data['driver'] == driver])
+            
+            entry = {
+                "driver": driver,
+                "predicted_grid": float(predicted_grid[i]),
+                "predicted_finish": float(predicted_race[i]),
+                "actual_grid": float(actual_grid[i]) if actual_grid[i] is not None else None,
+                "actual_finish": float(actual_finish[i]) if actual_finish[i] is not None else None,
+                "grid_model_score": float(grid_scores[i]),
+                "race_model_score": float(race_scores[i]),
+                "historical_races": driver_hist_count  # Shows how much data we had for prediction
+            }
+            if race_confidence is not None:
+                entry["race_confidence"] = float(race_confidence[i])
+            results.append(entry)
+        
+        # Sort by predicted finish position
+        results.sort(key=lambda x: x["predicted_finish"])
+        
+        return jsonify({
+            "season": season,
+            "round": round_num,
+            "predictions": results,
+            "total_drivers": len(results),
+            "model_type": "historical_two_stage_leak_free",
+            "description": "Truly leak-free historical prediction using only pre-race data",
+            "historical_races_used": len(historical_data),
+            "data_integrity": "leak_free"
+        })
+        
+    except Exception as e:
+        import traceback
+        error_details = traceback.format_exc()
+        print(f"Leak-free historical prediction error: {error_details}")
+        return jsonify({"error": f"Leak-free prediction failed: {str(e)}"}), 500
+    
+#initialize models
 try:
     load_models()
     print("✅ Enhanced predictor API loaded with proper feature handling")

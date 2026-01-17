@@ -21,8 +21,6 @@ export default function Predictor() {
   const loadAvailableRaces = async () => {
     try {
       setRacesLoading(true);
-
-      // Try to use your existing backend structure
       const response = await fetch(`${API_BASE}/available_races`);
 
       if (response.ok) {
@@ -32,7 +30,6 @@ export default function Predictor() {
         setAvailableRaces(data.races);
         setAvailableSeasons(data.seasons);
 
-        // Set default year to the most recent season
         if (data.seasons.length > 0) {
           setSelectedYear(data.seasons[data.seasons.length - 1].toString());
         }
@@ -42,7 +39,6 @@ export default function Predictor() {
     } catch (err) {
       console.error("Error loading available races:", err);
 
-      // Fallback: Create basic structure based on common F1 calendar
       const fallbackRaces = {
         2024: [
           { id: "bahrain", round: 1, name: "Bahrain Grand Prix" },
@@ -81,7 +77,6 @@ export default function Predictor() {
     }
   };
 
-  // Reset selected race when year changes
   useEffect(() => {
     setSelectedRace("");
     setHistoricalPredictions([]);
@@ -90,8 +85,6 @@ export default function Predictor() {
   const loadUpcomingPredictions = async () => {
     try {
       setUpcomingLoading(true);
-
-      // Use the existing endpoint with next_only=true parameter
       const response = await fetch(
         `${API_BASE}/predict_race_with_predicted_grid?season=2025&confidence=false&next_only=true`
       );
@@ -115,7 +108,6 @@ export default function Predictor() {
     }
   };
 
-  // Load historical predictions when race is selected
   const loadHistoricalPredictions = React.useCallback(async () => {
     if (!selectedRace) return;
 
@@ -130,12 +122,6 @@ export default function Predictor() {
         throw new Error("Race not found");
       }
 
-      // Load THREE types of predictions for completed races:
-      // 1. Post-qualifying predictions (using actual grid)
-      // 2. Historical two-stage predictions (predicted grid → race, ignoring actual qualifying)
-      // 3. Grid position predictions vs actual
-
-      // 1. Post-qualifying predictions (original)
       const finishResponse = await fetch(
         `${API_BASE}/predict_finish_pos_round?season=${selectedYear}&round=${raceData.round}&confidence=false`
       );
@@ -146,7 +132,6 @@ export default function Predictor() {
         postQualPredictions = finishData.predictions || [];
       }
 
-      // 2. Historical two-stage predictions (NEW - ignores actual qualifying)
       const historicalTwoStageResponse = await fetch(
         `${API_BASE}/predict_historical_race_two_stage?season=${selectedYear}&round=${raceData.round}&confidence=false`
       );
@@ -158,7 +143,6 @@ export default function Predictor() {
           historicalTwoStageData.predictions || [];
       }
 
-      // 3. Grid comparison
       const gridComparisonResponse = await fetch(
         `${API_BASE}/compare_grid_predictions?season=${selectedYear}&round=${raceData.round}`
       );
@@ -169,7 +153,6 @@ export default function Predictor() {
         gridComparison = gridData.grid_comparison || [];
       }
 
-      // Combine all data for display
       const combinedData = postQualPredictions.map((postQual) => {
         const historicalTwoStage = historicalTwoStagePredictions.find(
           (hts) => hts.driver === postQual.driver
@@ -199,7 +182,6 @@ export default function Predictor() {
     }
   }, [selectedRace, selectedYear, availableRaces]);
 
-  // Load historical predictions when race is selected
   useEffect(() => {
     loadHistoricalPredictions();
   }, [loadHistoricalPredictions]);
@@ -223,34 +205,58 @@ export default function Predictor() {
   };
 
   return (
-    <div className="max-w-6xl mx-auto p-6">
-      <h2 className="text-4xl font-f1-bold text-f1-red mb-8">
-        Race Predictions
-      </h2>
+    <div className="px-4 md:px-8 py-8">
+      {/* Predictor Header */}
+      <div className="relative mb-12 text-center">
+        {/* Main header content */}
+        <div className="relative z-10">
+          <h1 className="font-f1-display text-4xl md:text-5xl lg:text-6xl font-bold text-f1-red mb-4 text-shadow-predictor">
+            Race Predictor
+          </h1>
+          <div className="flex flex-col items-center justify-center gap-4 text-f1-white">
+            <p className="text-lg font-f1-display">
+              AI-Powered F1 Race Predictions
+            </p>
+            <div className="flex flex-col md:flex-row items-center gap-4">
+              <div className="flex items-center gap-2">
+                <div className="w-2 h-2 bg-f1-red rounded-full"></div>
+                <span className="text-sm text-gray-300">
+                  Live Predictions
+                </span>
+              </div>
+              {upcomingPredictions.length > 0 && (
+                <div className="text-sm text-f1-red font-f1-display font-bold">
+                  Next: {getUpcomingRaceName()}
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      </div>
 
       {/* Upcoming Race Predictions */}
       <div className="mb-12">
-        <h3 className="text-2xl font-f1-primary mb-4 text-f1-white">
-          🏁 {getUpcomingRaceName()} - 2025
+        <h3 className="text-2xl font-f1-display font-bold mb-6 text-f1-white border-l-4 border-f1-red pl-4">
+          {getUpcomingRaceName()} - 2025
         </h3>
 
         {upcomingLoading ? (
-          <div className="bg-gray-800 rounded-lg p-6 text-center">
+          <div className="bg-f1-black rounded-lg p-6 text-center border border-gray-700">
             <div className="animate-pulse text-f1-white">
               Loading upcoming race predictions...
             </div>
           </div>
         ) : upcomingPredictions.length > 0 ? (
-          <div className="bg-gray-800 rounded-lg overflow-hidden shadow-lg">
+          <div className="bg-f1-black rounded-lg overflow-hidden shadow-lg border border-gray-700">
             <div className="overflow-x-auto">
               <table className="w-full">
                 <thead className="bg-f1-red">
                   <tr>
-                    <th className="px-4 py-3 text-left font-f1-bold">Driver</th>
-                    <th className="px-4 py-3 text-left font-f1-bold">
+                    <th className="px-4 py-3 text-left font-f1-display font-bold">Driver</th>
+                    <th className="px-4 py-3 text-left font-f1-display font-bold">
                       Pred. Grid
                     </th>
-                    <th className="px-4 py-3 text-left font-f1-bold">
+                    <th className="px-4 py-3 text-left font-f1-display font-bold">
                       Pred. Finish
                     </th>
                   </tr>
@@ -259,20 +265,20 @@ export default function Predictor() {
                   {upcomingPredictions.map((pred, idx) => (
                     <tr
                       key={idx}
-                      className="border-b border-gray-700 hover:bg-gray-700"
+                      className="border-b border-gray-700 hover:bg-gray-800 transition-colors"
                     >
-                      <td className="px-4 py-3 font-f1-primary text-f1-white">
+                      <td className="px-4 py-3 font-f1-display text-f1-white">
                         {pred.driver}
                       </td>
                       <td
-                        className={`px-4 py-3 font-f1-bold ${getPositionColor(
+                        className={`px-4 py-3 font-f1-display font-bold ${getPositionColor(
                           pred.predicted_grid
                         )}`}
                       >
                         P{Math.round(pred.predicted_grid)}
                       </td>
                       <td
-                        className={`px-4 py-3 font-f1-bold text-lg ${getPositionColor(
+                        className={`px-4 py-3 font-f1-display font-bold text-lg ${getPositionColor(
                           pred.predicted_finish
                         )}`}
                       >
@@ -285,7 +291,7 @@ export default function Predictor() {
             </div>
           </div>
         ) : (
-          <div className="bg-gray-800 rounded-lg p-6 text-center text-gray-400">
+          <div className="bg-f1-black rounded-lg p-6 text-center text-gray-400 border border-gray-700">
             No upcoming race predictions available
           </div>
         )}
@@ -293,21 +299,21 @@ export default function Predictor() {
 
       {/* Historical Predictions Section */}
       <div>
-        <h3 className="text-2xl font-f1-primary mb-6 text-f1-white">
-          📊 Historical Race Analysis
+        <h3 className="text-2xl font-f1-display font-bold mb-6 text-f1-white border-l-4 border-f1-red pl-4">
+          Historical Race Analysis
         </h3>
 
         {/* Controls */}
         <div className="flex flex-wrap gap-4 mb-6">
           {/* Year Selector */}
           <div>
-            <label className="block text-sm font-f1-primary text-gray-300 mb-2">
+            <label className="block text-sm font-f1-display text-gray-300 mb-2">
               Season
             </label>
             <select
               value={selectedYear}
               onChange={(e) => setSelectedYear(e.target.value)}
-              className="bg-gray-800 text-f1-white border border-gray-600 rounded px-3 py-2 font-f1-primary focus:border-f1-red focus:outline-none"
+              className="bg-f1-black text-f1-white border border-gray-600 rounded px-3 py-2 font-f1-display focus:border-f1-red focus:outline-none transition-colors"
               disabled={racesLoading}
             >
               {racesLoading ? (
@@ -324,13 +330,13 @@ export default function Predictor() {
 
           {/* Race Selector */}
           <div>
-            <label className="block text-sm font-f1-primary text-gray-300 mb-2">
+            <label className="block text-sm font-f1-display text-gray-300 mb-2">
               Grand Prix
             </label>
             <select
               value={selectedRace}
               onChange={(e) => setSelectedRace(e.target.value)}
-              className="bg-gray-800 text-f1-white border border-gray-600 rounded px-3 py-2 font-f1-primary focus:border-f1-red focus:outline-none min-w-64"
+              className="bg-f1-black text-f1-white border border-gray-600 rounded px-3 py-2 font-f1-display focus:border-f1-red focus:outline-none min-w-64 transition-colors"
               disabled={racesLoading || !selectedYear}
             >
               <option value="">
@@ -348,7 +354,7 @@ export default function Predictor() {
 
         {/* Loading State */}
         {loading && (
-          <div className="bg-gray-800 rounded-lg p-6 text-center">
+          <div className="bg-f1-black rounded-lg p-6 text-center border border-gray-700">
             <div className="animate-pulse text-f1-white">
               Loading predictions...
             </div>
@@ -364,11 +370,11 @@ export default function Predictor() {
 
         {/* Historical Predictions Table */}
         {!loading && selectedRace && (
-          <div className="bg-gray-800 rounded-lg overflow-hidden shadow-lg">
+          <div className="bg-f1-black rounded-lg overflow-hidden shadow-lg border border-gray-700">
             {historicalPredictions.length > 0 && (
               <div className="overflow-x-auto">
-                <div className="bg-f1-red px-4 py-2">
-                  <h4 className="font-f1-bold text-f1-white">
+                <div className="bg-f1-red px-4 py-3">
+                  <h4 className="font-f1-display font-bold text-f1-white">
                     Race Prediction Comparison
                   </h4>
                   <p className="text-sm text-f1-white opacity-90">
@@ -376,24 +382,24 @@ export default function Predictor() {
                   </p>
                 </div>
                 <table className="w-full">
-                  <thead className="bg-gray-700">
+                  <thead className="bg-gray-800">
                     <tr>
-                      <th className="px-3 py-3 text-left font-f1-primary text-sm">
+                      <th className="px-3 py-3 text-left font-f1-display text-sm text-f1-white">
                         Driver
                       </th>
-                      <th className="px-3 py-3 text-left font-f1-primary text-sm">
+                      <th className="px-3 py-3 text-left font-f1-display text-sm text-f1-white">
                         Pred Grid
                       </th>
-                      <th className="px-3 py-3 text-left font-f1-primary text-sm">
+                      <th className="px-3 py-3 text-left font-f1-display text-sm text-f1-white">
                         Actual Grid
                       </th>
-                      <th className="px-3 py-3 text-left font-f1-primary text-sm">
+                      <th className="px-3 py-3 text-left font-f1-display text-sm text-f1-white">
                         Post-Qual
                       </th>
-                      <th className="px-3 py-3 text-left font-f1-primary text-sm">
+                      <th className="px-3 py-3 text-left font-f1-display text-sm text-f1-white">
                         Two-Stage
                       </th>
-                      <th className="px-3 py-3 text-left font-f1-primary text-sm">
+                      <th className="px-3 py-3 text-left font-f1-display text-sm text-f1-white">
                         Actual Finish
                       </th>
                     </tr>
@@ -402,13 +408,13 @@ export default function Predictor() {
                     {historicalPredictions.map((pred, idx) => (
                       <tr
                         key={idx}
-                        className="border-b border-gray-700 hover:bg-gray-700"
+                        className="border-b border-gray-700 hover:bg-gray-800 transition-colors"
                       >
-                        <td className="px-3 py-3 font-f1-primary text-f1-white text-sm">
+                        <td className="px-3 py-3 font-f1-display text-f1-white text-sm">
                           {pred.driver}
                         </td>
                         <td
-                          className={`px-3 py-3 font-f1-bold text-sm ${
+                          className={`px-3 py-3 font-f1-display font-bold text-sm ${
                             pred.historical_predicted_grid
                               ? getPositionColor(pred.historical_predicted_grid)
                               : "text-gray-500"
@@ -419,7 +425,7 @@ export default function Predictor() {
                             : "N/A"}
                         </td>
                         <td
-                          className={`px-3 py-3 font-f1-bold text-sm ${
+                          className={`px-3 py-3 font-f1-display font-bold text-sm ${
                             pred.actual_grid
                               ? getPositionColor(pred.actual_grid)
                               : "text-gray-500"
@@ -430,14 +436,14 @@ export default function Predictor() {
                             : "N/A"}
                         </td>
                         <td
-                          className={`px-3 py-3 font-f1-bold text-sm ${getPositionColor(
+                          className={`px-3 py-3 font-f1-display font-bold text-sm ${getPositionColor(
                             pred.predicted
                           )}`}
                         >
                           P{Math.round(pred.predicted)}
                         </td>
                         <td
-                          className={`px-3 py-3 font-f1-bold text-sm ${
+                          className={`px-3 py-3 font-f1-display font-bold text-sm ${
                             pred.historical_two_stage_predicted
                               ? getPositionColor(
                                   pred.historical_two_stage_predicted
@@ -452,7 +458,7 @@ export default function Predictor() {
                             : "N/A"}
                         </td>
                         <td
-                          className={`px-3 py-3 font-f1-bold text-sm ${
+                          className={`px-3 py-3 font-f1-display font-bold text-sm ${
                             pred.actual
                               ? getPositionColor(pred.actual)
                               : "text-gray-500"
@@ -464,7 +470,7 @@ export default function Predictor() {
                     ))}
                   </tbody>
                 </table>
-                <div className="bg-gray-700 px-4 py-2 text-xs text-gray-300">
+                <div className="bg-gray-800 px-4 py-2 text-xs text-gray-300">
                   <p>
                     <strong>Post-Qual:</strong> Uses actual qualifying results |{" "}
                     <strong>Two-Stage:</strong> Predicts grid first, then race
@@ -482,6 +488,16 @@ export default function Predictor() {
           </div>
         )}
       </div>
+
+      {/* CSS Animations */}
+      <style jsx>{`
+        .text-shadow-predictor {
+          text-shadow: 
+            0 0 10px rgba(19, 19, 19, 0.8),
+            0 0 20px rgba(19, 19, 19, 0.6),
+            2px 2px 4px rgba(19, 19, 19, 0.9);
+        }
+      `}</style>
     </div>
   );
 }

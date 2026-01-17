@@ -6,7 +6,7 @@ An end‑to‑end Formula 1 analytics and news platform that combines a modern R
 - Live F1 news pulled from the official Formula 1 RSS feed
 - Dashboards that compare model predictions to actual race results
 
-From a resume point of view, this project demonstrates:
+This project demonstrates:
 
 - A full‑stack **Formula 1 analytics website** with React + Flask
 - A **news aggregation system** using RSS parsing, APScheduler jobs, and SQLite for real‑time headlines
@@ -22,7 +22,7 @@ From a resume point of view, this project demonstrates:
   - React (Create React App) single‑page app
   - Tailwind CSS for theming and F1‑style visuals
   - Pages:
-    - `Landing` – animated hero with car carousel and Formula 1nsights logo
+    - `Landing` – animated car carousel and Formula 1nsights logo
     - `News` – F1 news hub backed by the Flask API
     - `Predictor` – tables for upcoming race predictions and historical analysis
   - Uses CRA dev proxy to talk to the backend at `http://127.0.0.1:5001`.
